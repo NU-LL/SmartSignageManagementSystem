@@ -7,6 +7,7 @@
 
 #include <qdlglogin.h>
 
+MainWindow* mainWindow = nullptr;
 
 int main(int argc, char *argv[])
 {
@@ -30,6 +31,7 @@ int main(int argc, char *argv[])
     if (dlgLogin->exec()==QDialog::Accepted)
     {
         MainWindow w;
+        mainWindow = &w;
         w.show();
         return a.exec();
     }

@@ -4,7 +4,8 @@
 #include <qdebug.h>
 #include <QMessageBox>
 
-#include "mainwindow.h"
+#include "tcpserver.h"
+//#include "mainwindow.h"
 #include "qformdebug.h"
 #include "protocol.h"
 
@@ -34,14 +35,15 @@ void QFormDebugCmd::on_pushButton_set_Voice_clicked()
         return ;
     }
 //    nativeParentWidget()->setWindowTitle("New Window Title");//用该函数可以测试是那个窗口
-    MainWindow *ptrMain = (MainWindow*)nativeParentWidget();//获得顶层窗口
+//    MainWindow *ptrMain = (MainWindow*)nativeParentWidget();//获得顶层窗口
 
     QByteArray data;
     data += ui->horizontalSlider_Voice->value() + '0';
     //发送消息 并 注册回调函数
-    ptrMain->sendMessage(02, data, objName);
+    TcpServer& server = TcpServer::getHandle();
+    server.sendMessage(02, data, objName);
     //发送完关闭即销毁 防止该界面关闭后仍回调
-    ptrMain->disregisterCallback(02);
+    server.disregisterCallback(02);
 }
 
 //设置亮度
@@ -54,13 +56,14 @@ void QFormDebugCmd::on_pushButton_set_Lightness_clicked()
         QMessageBox::warning(this, tr("警告"), tr("请先连接设备"));
         return ;
     }
-    MainWindow *ptrMain = (MainWindow*)nativeParentWidget();//获得顶层窗口
+//    MainWindow *ptrMain = (MainWindow*)nativeParentWidget();//获得顶层窗口
 
     QByteArray data;
     data += QString("%1").arg(ui->horizontalSlider_Lightness->value(), 2, 10, QLatin1Char('0')).toLocal8Bit();
     //发送消息 并 注册回调函数
-    ptrMain->sendMessage(05, data, objName);
+    TcpServer& server = TcpServer::getHandle();
+    server.sendMessage(05, data, objName);
     //发送完关闭即销毁 防止该界面关闭后仍回调
-    ptrMain->disregisterCallback(05);
+    server.disregisterCallback(05);
 }
 

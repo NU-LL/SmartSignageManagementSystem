@@ -5,6 +5,7 @@
 #include <qdebug.h>
 #include <QMessageBox>
 
+
 #include "protocol.h"
 #include "mainwindow.h"
 #include "qformdebugcmd.h"
@@ -31,12 +32,15 @@ QFormDebug::QFormDebug(QWidget *parent) :
     //填充 comboBox_DeviceInfo
     QList<QTcpSocket *> m_tcps = server.m_server.findChildren<QTcpSocket *>();
     foreach (QTcpSocket *tcp, m_tcps)
-    {
         ui->comboBox_DeviceInfo->addItem(tcp->objectName());
-    }
+
+
+    QString ip = ui->comboBox_DeviceInfo->currentText();
+    if(server.Ip2IdTable.find(ip) != server.Ip2IdTable.end())
+        ui->label_DeviceId->setText(server.Ip2IdTable[ip]);
     //连接信号槽
-    connect(&server, static_cast<void (TcpServer:: *)(int, QString, QString, int)>(&TcpServer::message),
-            this, static_cast<void (QFormDebug:: *)(int, QString, QString, int)>(&QFormDebug::recMessage));
+    connect(&server, static_cast<void (TcpServer:: *)(int, QString, QString, int, void*)>(&TcpServer::message),
+            this, static_cast<void (QFormDebug:: *)(int, QString, QString, int, void*)>(&QFormDebug::recMessage));
     connect(&server, static_cast<void (TcpServer:: *)(QTcpSocket *, const QByteArray& data)>(&TcpServer::recData),
             this, static_cast<void (QFormDebug:: *)(QTcpSocket *, const QByteArray& data)>(&QFormDebug::recData));
 }
@@ -47,15 +51,15 @@ QFormDebug::~QFormDebug()
     TcpServer& server = TcpServer::getHandle();
     disconnect(&server, static_cast<void (TcpServer:: *)(QTcpSocket *, const QByteArray& data)>(&TcpServer::recData),
                this, static_cast<void (QFormDebug:: *)(QTcpSocket *, const QByteArray& data)>(&QFormDebug::recData));
-    disconnect(&server, static_cast<void (TcpServer:: *)(int, QString, QString, int)>(&TcpServer::message),
-               this, static_cast<void (QFormDebug:: *)(int, QString, QString, int)>(&QFormDebug::recMessage));
+    disconnect(&server, static_cast<void (TcpServer:: *)(int, QString, QString, int, void*)>(&TcpServer::message),
+               this, static_cast<void (QFormDebug:: *)(int, QString, QString, int, void*)>(&QFormDebug::recMessage));
     delete ui;
 }
 
 //消息接收槽函数
 //level：QMessageBox级别
 //      3,2,1,0<==>critical,warning,information,question
-void QFormDebug::recMessage(int , QString title, QString text, int message_id)
+void QFormDebug::recMessage(int , QString title, QString text, int message_id, void* message)
 {
     QString& ip = title;
     QString& port = text;
@@ -67,18 +71,17 @@ void QFormDebug::recMessage(int , QString title, QString text, int message_id)
         }
         case(MESSAGE_NEWCONNECTION):
         {
+            TcpServer& server = TcpServer::getHandle();
+
             ui->comboBox_DeviceInfo->addItem(ip+':'+port);
+            if(server.Ip2IdTable.find(ip) != server.Ip2IdTable.end())
+                ui->label_DeviceId->setText(server.Ip2IdTable[ip]);
             break;
         }
         case(MESSAGE_DISCONNECTION):
         {
             int idx = ui->comboBox_DeviceInfo->findText(ip+':'+port);
             ui->comboBox_DeviceInfo->removeItem(idx);//如果idx无效什么也不会做
-            break;
-        }
-        default:
-        {
-            qDebug() << "接收消息id错误：" << message_id;
             break;
         }
     }
@@ -94,8 +97,9 @@ void QFormDebug::recData(QTcpSocket *tcp, const QByteArray& data)
     ui->textBrowser_Receive->append("<span style=\" color:#55aa7f;\">["+ tcp->peerAddress().toString()+":"+QString::number(tcp->peerPort())+"]:" + "</span>");
     if(ui->checkBox_HexDisplay->isChecked())
     {
-        MainWindow *ptr = (MainWindow*)parentWidget();//获取父窗口
-        ui->textBrowser_Receive->append("<span style=\" color:#55aa7f;\">" + ptr->byteArrayToHexString(data) + "</span>");
+//        MainWindow *ptr = (MainWindow*)parentWidget();//获取父窗口
+        TcpServer& server = TcpServer::getHandle();
+        ui->textBrowser_Receive->append("<span style=\" color:#55aa7f;\">" + server.byteArrayToHexString(data) + "</span>");
     }
     else
         ui->textBrowser_Receive->append("<span style=\" color:#55aa7f;\">" + QString::fromLocal8Bit(data) + "</span>");
@@ -150,7 +154,10 @@ QString QFormDebug::hexDump(const QByteArray &data, bool ishtml)
         for (j = 0; j < 16; j++)
             if (i+j < data.length())
                 buf += QString(__is_print(data[i+j]) ? data[i+j] : '.');
-        buf += QString('\n');
+        if(ishtml)
+            buf += "<br/>";
+        else
+            buf += '\n';
     }
     return buf;
 }
@@ -215,11 +222,11 @@ void QFormDebug::on_pushButton_Send_clicked()
     if(ui->checkBox_HexSend->isChecked())
     {
         //hex 发送
-        MainWindow *ptr = (MainWindow*)parentWidget();//获取父窗口
+//        MainWindow *ptr = (MainWindow*)parentWidget();//获取父窗口
         if(ui->checkBox_AllSend->isChecked())
-            server.send(ptr->hexStringToByteArray(ui->textEdit_Send->toPlainText()));
+            server.send(server.hexStringToByteArray(ui->textEdit_Send->toPlainText()));
         else
-            server.send(ptr->hexStringToByteArray(ui->textEdit_Send->toPlainText()), ui->comboBox_DeviceInfo->currentText());
+            server.send(server.hexStringToByteArray(ui->textEdit_Send->toPlainText()), ui->comboBox_DeviceInfo->currentText());
     }else
     {
         //ascii发送
@@ -237,9 +244,11 @@ void QFormDebug::on_pushButton_CustomSend_clicked()
     quint8 addr = ui->spinBox_CustomAddr->value();
     quint8 type = ui->spinBox_CustomFrameType->value();
     QByteArray data;
+    //tcp server
+    TcpServer& server = TcpServer::getHandle();
     try {
-        MainWindow *ptr = (MainWindow*)parentWidget();//获取父窗口
-        data += ptr->hexStringToByteArray(ui->lineEdit_CustomData->text());
+//        MainWindow *ptr = (MainWindow*)parentWidget();//获取父窗口
+        data += server.hexStringToByteArray(ui->lineEdit_CustomData->text());
     }  catch (...) {
         //输入数据异常
         return;
@@ -259,12 +268,11 @@ void QFormDebug::on_pushButton_CustomSend_clicked()
 
     Frame frame(addr, type, data);
 
-    //tcp server
-    TcpServer& server = TcpServer::getHandle();
+
     server.send(frame.getFrame(), ui->comboBox_DeviceInfo->currentText());
 
-    MainWindow *ptr = (MainWindow*)parentWidget();//获取父窗口
-    ui->textBrowser_Receive->append("<span style=\" color:#55aaff;\">" + ptr->byteArrayToHexString(frame.getFrame()) + "</span>");
+//    MainWindow *ptr = (MainWindow*)parentWidget();//获取父窗口
+    ui->textBrowser_Receive->append("<span style=\" color:#55aaff;\">" + server.byteArrayToHexString(frame.getFrame()) + "</span>");
     if(ui->checkBox_AutoDecode->isChecked())
     {
         //自动解码
@@ -294,5 +302,13 @@ void QFormDebug::on_pushButton_DebugCmd_clicked()
     formDebugCmd->setWindowFlag(Qt::Window,true);
     formDebugCmd->setWindowModality(Qt::WindowModal);//窗口阻塞，但是该函数不会阻塞
     formDebugCmd->show();
+}
+
+//切换选项卡
+void QFormDebug::on_comboBox_DeviceInfo_currentTextChanged(const QString &arg1)
+{
+    TcpServer& server = TcpServer::getHandle();
+    if(server.Ip2IdTable.find(arg1) != server.Ip2IdTable.end())
+        ui->label_DeviceId->setText(server.Ip2IdTable[arg1]);
 }
 

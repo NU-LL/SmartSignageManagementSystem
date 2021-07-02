@@ -27,9 +27,13 @@ public:
     QString hexDump(const QByteArray &data, bool ishtml = false);
 
     QString getObjectName();//获得现在的对象名称
+private:
+
+
+
 
 public slots:
-    void recMessage(int level, QString title, QString text, int message_id = MESSAGE_BOX);//消息接收槽函数
+    void recMessage(int level, QString title, QString text, int message_id = MESSAGE_BOX, void* message = nullptr);//消息接收槽函数
     void recData(QTcpSocket* tcp, const QByteArray& data);//数据接收槽函数
 
 private slots:
@@ -41,9 +45,9 @@ private slots:
 
     void on_pushButton_DebugCmd_clicked();
 
+    void on_comboBox_DeviceInfo_currentTextChanged(const QString &arg1);
+
 private:
-
-
     Ui::QFormDebug *ui;
 };
 

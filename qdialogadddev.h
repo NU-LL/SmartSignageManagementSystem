@@ -17,8 +17,16 @@ public:
     ~QDialogAddDev();
 
     QString getName();
-    QString getDevice();
+    QString getDeviceIp();
+    QString getDeviceId();
     QString getSign();
+
+private slots:
+    void on_comboBox_Device_currentTextChanged(const QString &arg1);
+
+private:
+//    bool eventFilter(QObject *obj, QEvent *e);
+
 
 private:
     Ui::QDialogAddDev *ui;
