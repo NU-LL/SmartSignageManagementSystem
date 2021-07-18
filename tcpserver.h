@@ -31,20 +31,20 @@ class TcpDevice : public QObject
     Q_OBJECT
 public:
     explicit TcpDevice(QObject *parent = nullptr) : QObject(parent){};
-    TcpDevice(QString info, QString id, QString name, quint8 staBytes = 0, QObject *parent = nullptr) : QObject(parent),
+    TcpDevice(QString info, QString id, QString name, quint8 staBytes = 0x08, QObject *parent = nullptr) : QObject(parent),
         info(info),
         id(id),
         name(name),
         stabyte(staBytes)
     {};
-    TcpDevice(QString info, QString id, QString name, bool offline = false, bool voice = false, bool flash = false, bool alert = false, QObject *parent = nullptr) : QObject(parent),
+    TcpDevice(QString info, QString id, QString name, bool offline = true, bool voice = false, bool flash = false, bool alert = false, QObject *parent = nullptr) : QObject(parent),
         info(info),
         id(id),
         name(name),
-        offline(offline),
-        voice(voice),
+        alert(alert),
         flash(flash),
-        alert(alert)
+        voice(voice),
+        offline(offline)
     {};
     ~TcpDevice(){};
 
@@ -53,7 +53,7 @@ public:
     QString ip;
     int port;
     QString id;//编号
-    QString name;//名称
+    QString name;//标识牌名称
     QString location;//安装位置
     QString sign;//标示语
     int signidx;//标示语编号
@@ -61,6 +61,15 @@ public:
     quint8 light;//显示亮度
     quint8 vol;//语音音量
     quint8 delay;//提示延时
+
+
+    int heartbeat = 0;
+    //是否应该发送心跳信号
+    bool isSendHeartbeat();
+    //心跳信号
+//    void heartbeat();
+
+
 
     //状态字
     union{
@@ -71,7 +80,7 @@ public:
             quint8 offline:1;//最高位
             quint8 undefined:4;
         };
-        quint8 stabyte;//状态字
+        quint8 stabyte;//状态字 默认离线
     };
     //异常状态
     union{
@@ -87,6 +96,7 @@ public:
         quint8 stafault;
     };
 private:
+    static int heartbeats;//当前心跳数量
 };
 
 
@@ -125,35 +135,81 @@ public:
 
 
 
-    qint64 send(const char *data, qint64 maxSize, QString objectName = QString());
-    qint64 send(const QByteArray &byteArray, QString objectName = QString());
+    qint64 send(const char *data, qint64 maxSize, const QString& objectName = QString());
+    qint64 send(const QByteArray &byteArray, const QString& objectName = QString());
 
 
 
-
+    //注意：仅仅在没有type类型的回调函数时才能注册成功
     bool registerCallback(quint8 type, callback_t func = [](TcpDevice*, quint8, const QByteArray &){});
     bool disregisterCallback(quint8 type);
 
     //非阻塞发送
-    int sendMessage_noblock(quint8 addr, quint8 type, const QByteArray &data, QString objectName);
+    int sendMessage_noblock(quint8 addr, quint8 type, const QByteArray& data, const QString& objectName);
 
     //阻塞式发送 不可重入
+    //注意：该函数中的func参数仅限临时使用，所以该函数仅限于发送并接收响应一次。
+    //      如需要主动接收下位机信号请调用 registerCallback 或 sendMessageDaemon
     //返回值：
     //0：正常
     //-1：发送失败
     //-2：超时
     //-3：重入
-    int sendMessage(quint8 addr, quint8 type, const QByteArray &data, QString objectName, callback_t func = nullptr, int timeover = REC_TIMEOUT);
-    int sendMessage(quint8 type, const QByteArray &data, QString objectName, callback_t func = nullptr, int timeover = REC_TIMEOUT)
+    int sendMessage(quint8 addr, quint8 type, const QByteArray& data, const QString& objectName, callback_t func = nullptr, int timeover = REC_TIMEOUT);
+    int sendMessage(quint8 type, const QByteArray& data, const QString& objectName, callback_t func = nullptr, int timeover = REC_TIMEOUT)
                     {return sendMessage(0, type, data, objectName, func, timeover);};
+
+    //发送数据并注册守护服务（允许下位机主动上报）
+    //注意：func如果使用匿名函数需要小心使用临时变量
+    //返回值：
+    //0：正常
+    //-1：发送失败
+    bool sendMessageDaemon(quint8 addr, quint8 type, const QByteArray& data, const QString& objectName, callback_t func)
+    {
+        registerCallback(type, func);//注意：仅仅在没有type类型的回调函数时才能注册成功
+        return sendMessage_noblock(addr, type, data, objectName);
+    };
+    bool sendMessageDaemon(quint8 type, const QByteArray& data, const QString& objectName, callback_t func)
+                            {return sendMessageDaemon(0, type, data, objectName, func);};
 
     //回调完成标志，在 sendMessage 中，如果有回调函数，则完成时一定要设置改标志位
     bool callback_completion_flag = false;
 
-    //以下的map小心使用 以防插入多余元素
-    QMap<QString, QString> Ip2IdTable;//IP:port ==> ID
-    QMap<QString, QString> Id2IpTable;//ID ==> IP:port
-    QMap<QString, TcpDevice*> DeviceTab;//设备列表 //ID ==> TcpDevice*
+    //错误字符串
+    static QString ERROR;
+
+    int getDeviceNums(){return DeviceTab.size();};
+    bool isDeviceEmpty(){return DeviceTab.empty();};
+
+    TcpDevice* findTcpDevice(const QString& id)
+    {
+        auto iter = DeviceTab.find(id);
+        if(iter != DeviceTab.end())
+            return iter.value();
+        return nullptr;
+    };
+    TcpDevice* findTcpDevice_ip(const QString& info)
+    {
+        const QString& id = findId(info);
+        if(id == ERROR)
+            return nullptr;
+        return findTcpDevice(id);
+    };
+    const QString& findId(const QString& info)
+    {
+        auto iter = Ip2IdTable.find(info);
+        if(iter != Ip2IdTable.end())
+            return iter.value();
+        return ERROR;
+    }
+    const QString& findIp(const QString& id)
+    {
+        auto iter = Id2IpTable.find(id);
+        if(iter != Id2IpTable.end())
+            return iter.value();
+        return ERROR;
+    }
+
 signals:
     //level：QMessageBox级别
     //      3,2,1,0<==>critical,warning,information,question
@@ -170,6 +226,12 @@ private:
 
     //初始化客户端信号槽
     void initServerSignals(){connect(&m_server, &QTcpServer::newConnection, this, &TcpServer::onServerNewConnection);};
+
+    //以下的map小心使用 以防插入多余元素
+    QMap<QString, QString> Ip2IdTable;//IP:port ==> ID
+    QMap<QString, QString> Id2IpTable;//ID ==> IP:port
+    QMap<QString, TcpDevice*> DeviceTab;//设备列表 //ID ==> TcpDevice*
+
     //绑定映射表
     void bindTable(QString info, QString id)
     {
@@ -189,7 +251,7 @@ private:
 
     //周期定时器 心跳状态包
     QTimer *HeartbeatTimer = nullptr;
-    quint16 timerInterval = 5000;//ms
+    quint16 timerInterval = 5000;//ms 每个节点之间的时间间隔
 
 private slots:
     void timeout();

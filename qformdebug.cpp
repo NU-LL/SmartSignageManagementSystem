@@ -36,8 +36,9 @@ QFormDebug::QFormDebug(QWidget *parent) :
 
 
     QString ip = ui->comboBox_DeviceInfo->currentText();
-    if(server.Ip2IdTable.find(ip) != server.Ip2IdTable.end())
-        ui->label_DeviceId->setText(server.Ip2IdTable[ip]);
+//    if(server.Ip2IdTable.find(ip) != server.Ip2IdTable.end())
+//        ui->label_DeviceId->setText(server.Ip2IdTable[ip]);
+    ui->label_DeviceId->setText(server.findId(ip));
     //连接信号槽
     connect(&server, static_cast<void (TcpServer:: *)(int, QString, QString, int, void*)>(&TcpServer::message),
             this, static_cast<void (QFormDebug:: *)(int, QString, QString, int, void*)>(&QFormDebug::recMessage));
@@ -74,8 +75,9 @@ void QFormDebug::recMessage(int , QString title, QString text, int message_id, v
             TcpServer& server = TcpServer::getHandle();
 
             ui->comboBox_DeviceInfo->addItem(ip+':'+port);
-            if(server.Ip2IdTable.find(ip) != server.Ip2IdTable.end())
-                ui->label_DeviceId->setText(server.Ip2IdTable[ip]);
+//            if(server.Ip2IdTable.find(ip) != server.Ip2IdTable.end())
+//                ui->label_DeviceId->setText(server.Ip2IdTable[ip]);
+            ui->label_DeviceId->setText(server.findId(ip));
             break;
         }
         case(MESSAGE_DISCONNECTION):
@@ -308,7 +310,8 @@ void QFormDebug::on_pushButton_DebugCmd_clicked()
 void QFormDebug::on_comboBox_DeviceInfo_currentTextChanged(const QString &arg1)
 {
     TcpServer& server = TcpServer::getHandle();
-    if(server.Ip2IdTable.find(arg1) != server.Ip2IdTable.end())
-        ui->label_DeviceId->setText(server.Ip2IdTable[arg1]);
+//    if(server.Ip2IdTable.find(arg1) != server.Ip2IdTable.end())
+//        ui->label_DeviceId->setText(server.Ip2IdTable[arg1]);
+    ui->label_DeviceId->setText(server.findId(arg1));
 }
 

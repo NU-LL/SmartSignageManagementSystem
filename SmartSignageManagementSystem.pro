@@ -13,6 +13,8 @@ SOURCES += \
     mainwindow.cpp \
     protocol.cpp \
     qdialogadddev.cpp \
+    qdialogsetsign.cpp \
+    qdialogsetsigndev.cpp \
     qdlgabout.cpp \
     qdlglogin.cpp \
     qformdebug.cpp \
@@ -20,6 +22,7 @@ SOURCES += \
     qformmain.cpp \
     qformoptions.cpp \
     qformsigntable.cpp \
+    signobject.cpp \
     tcpserver.cpp
 
 HEADERS += \
@@ -27,6 +30,8 @@ HEADERS += \
     mainwindow.h \
     protocol.h \
     qdialogadddev.h \
+    qdialogsetsign.h \
+    qdialogsetsigndev.h \
     qdlgabout.h \
     qdlglogin.h \
     qformdebug.h \
@@ -34,11 +39,14 @@ HEADERS += \
     qformmain.h \
     qformoptions.h \
     qformsigntable.h \
+    signobject.h \
     tcpserver.h
 
 FORMS += \
     mainwindow.ui \
     qdialogadddev.ui \
+    qdialogsetsign.ui \
+    qdialogsetsigndev.ui \
     qdlgabout.ui \
     qdlglogin.ui \
     qformdebug.ui \

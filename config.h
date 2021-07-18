@@ -5,10 +5,12 @@
 #define DEFAULT_PROFILE_NAME    "set.ini"
 //默认配置文件路径
 #define DEFAULT_PROFILE_PATH    "."
+//默认图标文件路径
+#define DEFAULT_ICON_PATH       "./Icon"
 //标识牌表格列数
-#define TABLE_COLUMS            (9)
+//#define TABLE_COLUMS            (9)
 //标示语表格列数
-#define SIGNTABLE_COLUMS        (3)
+//#define SIGNTABLE_COLUMS        (4)
 //默认端口号
 #define DEFAULT_PORT            (23350)
 

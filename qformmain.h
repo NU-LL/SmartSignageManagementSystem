@@ -7,38 +7,136 @@
 #include <QItemSelectionModel>
 #include <QCloseEvent>
 #include <QItemDelegate>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonParseError>
+#include <QJsonArray>
 #include "tcpserver.h"
+
+#include <QMessageBox>
+
+#include "qformsigntable.h"
 
 namespace Ui {
 class QFormMain;
 }
 
 
-//标示语代理
-class signDelegate: public QItemDelegate
+
+class SignDevice : public TcpDevice
 {
     Q_OBJECT
 public:
-    signDelegate(QMap<int, QString>& SignTable, QObject *parent = 0):SignTable(SignTable){};
+    explicit SignDevice(QObject *parent = nullptr) : TcpDevice(parent){};
+    SignDevice(const QString& id, const QString& groupname, const QString& name, const QString& signid, QObject *parent = nullptr)
+        :TcpDevice("", id, name, 0x08, parent), groupname(groupname), signid(signid) {};
+//    SignDevice(SignDevice&){};//拷贝构造 允许拷贝
+    ~SignDevice(){};
 
 public:
-    //创建控件
-    QWidget *createEditor(QWidget *parent, const QStyleOptionViewItem &option, const QModelIndex &index) const;
-    //设置控件显示的数据 将Model中的数据更新到Delegate中
-    void setEditorData(QWidget *editor, const QModelIndex &index) const;
-    //将Delegate中的数据更新到Model中
-    void setModelData(QWidget *editor, QAbstractItemModel *model, const QModelIndex &index) const;
-    //更新控件区的显示
-    void updateEditorGeometry(QWidget *editor, const QStyleOptionViewItem &option, const QModelIndex &index) const{
-        editor->setGeometry(option.rect);
-    };
-private:
-    QMap<int, QString>& SignTable;
+    QString groupname = QString("未命名分组");//组名
+    QString signid;//标示语id
 
-private slots:
-    void currentTextChanged(const QString &str);
-    void currentIndexChanged(int idx);
+public:
+    //序列化
+    const QString serialization() const;
+    void serialization(QJsonObject& json) const;
+    //反序列化
+    void deserialization(const QString& str);
+    void deserialization(const QJsonObject& json);
+
+    //获得标示语信息
+    const QString getSignText()
+    {
+        Sign *sign = Sign::findSign(this->signid);
+        if(sign == nullptr)
+            return QString("");
+        return sign->text;
+    };
+    const QIcon getSignIcon()
+    {
+        Sign *sign = Sign::findSign(this->signid);
+        if(sign == nullptr)
+            return QIcon("");
+        return sign->getIcon();
+    }
+    const QColor getSignColor()
+    {
+        Sign *sign = Sign::findSign(this->signid);
+        if(sign == nullptr)
+            return QColor(0, 0, 0);//默认黑色
+        return sign->getColor();
+    }
+
+
+
+public:
+    //初始化列表
+    //需要一开始就调用，获得全局唯一的设备列表
+    static void Init();
+    //保存警示表
+    static bool save();
+
+    //通过id找对象
+    static SignDevice* findSignDev(const QString& id)
+    {
+        auto iter = SignDeviceTable.find(id);
+        if(iter != SignDeviceTable.end())
+            return iter.value();
+        return nullptr;
+    };
+    //注册警示语到警示语表中
+    static void registerSignDev(const QString& id, SignDevice* sign){SignDeviceTable[id] = sign;};
+    static void unregisterSignDev(const QString& id){delete SignDeviceTable[id];SignDeviceTable.remove(id);};
+    //清空整个表
+    static void clearSignDevTable()
+    {
+        foreach(SignDevice* it, SignDeviceTable)
+            delete it;
+        SignDeviceTable.clear();
+    };
+    //获取整个表，仅仅只有可读权限
+    //注意，由于表中存的的对象指针，仍可以通过该指针修改设备（这里仅仅是不能修改这个map）
+    static const QMap<QString, SignDevice*>& getSignDevTable(){return SignDeviceTable;};
+
+private:
+
+    //设备表
+    static QMap<QString, SignDevice*> SignDeviceTable;
 };
+
+
+
+
+
+
+
+
+////标示语代理
+//class signDelegate: public QItemDelegate
+//{
+//    Q_OBJECT
+//public:
+//    signDelegate(QMap<int, QString>& SignTable, QObject *parent = 0):SignTable(SignTable){};
+
+//public:
+//    //创建控件
+//    QWidget *createEditor(QWidget *parent, const QStyleOptionViewItem &option, const QModelIndex &index) const;
+//    //设置控件显示的数据 将Model中的数据更新到Delegate中
+//    void setEditorData(QWidget *editor, const QModelIndex &index) const;
+//    //将Delegate中的数据更新到Model中
+//    void setModelData(QWidget *editor, QAbstractItemModel *model, const QModelIndex &index) const;
+//    //更新控件区的显示
+//    void updateEditorGeometry(QWidget *editor, const QStyleOptionViewItem &option, const QModelIndex &index) const{
+//        editor->setGeometry(option.rect);
+//    };
+//private:
+//    QMap<int, QString>& SignTable;
+
+//private slots:
+//    void currentTextChanged(const QString &str);
+//    void currentIndexChanged(int idx);
+//};
 //按键代理
 class buttonDelegate: public QItemDelegate
 {
@@ -72,22 +170,24 @@ class QFormMain : public QWidget
 private:
     QStandardItemModel * theModel; //数据模型
     QItemSelectionModel *theSelection; //选择模型
-    QWidget *checkbox = nullptr;//第一栏的checkbox
-    QWidget *button = nullptr;//最后一栏的按键
-
-    void iniModelFromStringList (QStringList&) ; //从 StringList 初始化数据模型
-    void saveTable();
-
-    void loadSignTable();
 
     //关闭窗口信号
     void closeEvent(QCloseEvent *event);
     //修改某一项
-    void modifyCell(int row, int column, const QString &text){
+    bool modifyCell(int row, int column, const QString &text){
         QStandardItem* aItem = theModel->item(row, column);
-        if(aItem)
+        if(aItem == nullptr)
+        {
+            QMessageBox::warning(this, "警告", QString("修改(%1, %2)处失败，超出范围").arg(row).arg(column));
+            return false;
+        }
+        if(aItem->text() == text)
+            return false;
+        else
             aItem->setText(text);
+        return true;
     };
+
 public:
 //    //单例模式
 //    //注意：该函数线程不安全（C++构造函数本身就是线程不安全）
@@ -99,16 +199,39 @@ public:
     explicit QFormMain(QWidget *parent = nullptr);
     ~QFormMain();
 
-    //设置状态
-    void setStatus(int row, quint8 staBytes);
-    //添加设备
-    void addDevice(const QString& id, const QString& name, const QString& Sign, quint8 staBytes);
-    void addDevice(const QString& id, const QString& name, const QString& Sign, bool offline, bool voice, bool flash, bool alert){
-        quint8 staBytes = (offline == true?0x08:0x00)|(voice == true?0x04:0x00)|(flash == true?0x02:0x00)|(alert == true?0x01:0x00);
-        addDevice(id, name, Sign, staBytes);
+    void addDevice(SignDevice* signdev)
+    {
+        addLine(signdev->id, signdev->groupname, signdev->name, signdev->signid, signdev->voice==1, signdev->flash==1, signdev->alert==1);
+        SignDevice::registerSignDev(signdev->id, signdev);
+    };
+    void delDevice(int row)
+    {
+        QString id = theModel->item(row,0)->text();
+        SignDevice::unregisterSignDev(id);
+        delLine(row);
     };
 
-    QMap<int, QString> SignTable;//表示语表
+
+
+    //设置状态
+//    void setStatus(int row, quint8 staBytes);
+
+
+
+private:
+    //设置分组下拉框
+    void setGroupCombox(QComboBox *combobox);
+    //设置警示语下拉框
+    void setSignCombox(QComboBox *combobox);
+    //设置开关选项下拉框
+    void setSwitchCombox(QComboBox *combobox);
+
+    //添加一行
+    void addLine(const QString& id, const QString& groupname, const QString& name, const QString& signid, bool voice=false, bool flash=false, bool alert=false);
+    //删除一行
+    void delLine(int row){theModel->removeRow(row);};
+
+
 
 public slots:
     void recMessage(int level, QString title, QString text, int message_id = MESSAGE_BOX, void* message = nullptr);//消息接收槽函数
@@ -123,6 +246,8 @@ private slots:
     void on_pushButton_SignTable_clicked();
 
     void on_tableView_clicked(const QModelIndex &index);
+
+    void on_tableView_doubleClicked(const QModelIndex &index);
 
 private:
     Ui::QFormMain *ui;
