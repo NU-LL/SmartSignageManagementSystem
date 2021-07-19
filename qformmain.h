@@ -3,6 +3,7 @@
 
 #include <QWidget>
 #include <QLabel>
+#include <QBitArray>
 #include <QStandardItemModel>
 #include <QItemSelectionModel>
 #include <QCloseEvent>
@@ -23,19 +24,66 @@ class QFormMain;
 
 
 
-class SignDevice : public TcpDevice
+class SignDevice : public QObject
 {
     Q_OBJECT
 public:
-    explicit SignDevice(QObject *parent = nullptr) : TcpDevice(parent){};
+    explicit SignDevice(QObject *parent = nullptr) : QObject(parent){};
     SignDevice(const QString& id, const QString& groupname, const QString& name, const QString& signid, QObject *parent = nullptr)
-        :TcpDevice("", id, name, 0x08, parent), groupname(groupname), signid(signid) {};
+        :QObject(parent), id(id), groupname(groupname), name(name), signid(signid) {};
+//        :TcpDevice("", id, name, 0x08, parent), groupname(groupname), signid(signid) {};
 //    SignDevice(SignDevice&){};//拷贝构造 允许拷贝
+
+    //对 TcpDevice 的转换
+    SignDevice(TcpDevice& tcpdev)
+        :senderName(tcpdev.info), id(tcpdev.id), groupname(QString("未命名分组")), name(tcpdev.name), signid(tcpdev.signid) {};//拷贝构造
+    SignDevice& operator=(const TcpDevice& tcpdev)
+    {
+        this->senderName = tcpdev.info;
+        this->id = tcpdev.id;
+        this->name = tcpdev.name;
+        this->signid = tcpdev.signid;
+        return *this;
+    };
+
     ~SignDevice(){};
 
 public:
+    //各种属性
+    QString senderName;//用于发送数据时确定对象用
+
+
+    QString id;//编号
     QString groupname = QString("未命名分组");//组名
+    QString name;//标识牌名称
     QString signid;//标示语id
+
+    QStandardItem* item = nullptr;//表格中的id一栏的指针
+
+    //状态字
+    union{
+        struct{
+            quint8 alert:1;//最低位
+            quint8 flash:1;
+            quint8 voice:1;
+            quint8 offline:1;//最高位
+            quint8 undefined:4;
+        };
+        quint8 stabyte;//状态字 默认离线
+    };
+    //异常状态
+    union{
+        struct{
+            quint8 people_approach:1;//人员靠近 //最低位
+            quint8 Power:1;//电源故障
+            quint8 controller:1;//控制器故障
+            quint8 power_off:1;//交流电断电
+            quint8 low_battery:1;//电池电量过低
+            quint8 manual_configuration:1;//红外遥控手动配置中 //最高位
+            quint8 undefined:2;
+        }fault;
+        quint8 stafault;
+    };
 
 public:
     //序列化
@@ -199,9 +247,13 @@ public:
     explicit QFormMain(QWidget *parent = nullptr);
     ~QFormMain();
 
+    //更新 SignDevice 中的数据到表格中
+    //返回值：哪一位置1则表示该列更新
+    QBitArray refreshSignDev(SignDevice* signdev);
+
     void addDevice(SignDevice* signdev)
     {
-        addLine(signdev->id, signdev->groupname, signdev->name, signdev->signid, signdev->voice==1, signdev->flash==1, signdev->alert==1);
+        signdev->item = addLine(signdev->id, signdev->groupname, signdev->name, signdev->signid, signdev->voice==1, signdev->flash==1, signdev->alert==1);
         SignDevice::registerSignDev(signdev->id, signdev);
     };
     void delDevice(int row)
@@ -227,7 +279,8 @@ private:
     void setSwitchCombox(QComboBox *combobox);
 
     //添加一行
-    void addLine(const QString& id, const QString& groupname, const QString& name, const QString& signid, bool voice=false, bool flash=false, bool alert=false);
+    //返回第一栏（id）的指针（插入失败返回空）
+    QStandardItem* addLine(const QString& id, const QString& groupname, const QString& name, const QString& signid, bool voice=false, bool flash=false, bool alert=false);
     //删除一行
     void delLine(int row){theModel->removeRow(row);};
 

@@ -56,11 +56,12 @@ public:
     QString name;//标识牌名称
     QString location;//安装位置
     QString sign;//标示语
-    int signidx;//标示语编号
-    int imageidx;//图片编号
+    QString signid;//标示语编号
+    QString imageidx;//图片编号
     quint8 light;//显示亮度
     quint8 vol;//语音音量
     quint8 delay;//提示延时
+    quint8 color;//显示颜色
 
 
     int heartbeat = 0;

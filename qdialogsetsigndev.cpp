@@ -79,9 +79,9 @@ void QDialogSetSignDev::setParameters(SignDevice *signdev)
     ui->lineEdit_Name->setText(signdev->name);
     ui->comboBox_Sign->setCurrentText(sign->text);//如果无效，默认设置为第一个
 
-    ui->checkBox_Voice->setChecked(signdev->TcpDevice::voice==1);
-    ui->checkBox_Flash->setChecked(signdev->TcpDevice::flash==1);
-    ui->checkBox_Alert->setChecked(signdev->TcpDevice::alert==1);
+    ui->checkBox_Voice->setChecked(signdev->voice==1);
+    ui->checkBox_Flash->setChecked(signdev->flash==1);
+    ui->checkBox_Alert->setChecked(signdev->alert==1);
 }
 
 //保存对象
@@ -90,8 +90,8 @@ void QDialogSetSignDev::on_buttonBox_accepted()
     signdev->groupname = ui->comboBox_GroupName->currentText();
     signdev->name = ui->lineEdit_Name->text();
     signdev->signid = ui->comboBox_Sign->currentData().value<Sign*>()->id;
-    signdev->TcpDevice::voice = ui->checkBox_Voice->isChecked() == true?1:0;
-    signdev->TcpDevice::flash = ui->checkBox_Flash->isChecked() == true?1:0;
-    signdev->TcpDevice::alert = ui->checkBox_Alert->isChecked() == true?1:0;
+    signdev->voice = ui->checkBox_Voice->isChecked() == true?1:0;
+    signdev->flash = ui->checkBox_Flash->isChecked() == true?1:0;
+    signdev->alert = ui->checkBox_Alert->isChecked() == true?1:0;
 }
 

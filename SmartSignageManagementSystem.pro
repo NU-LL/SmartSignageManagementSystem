@@ -22,7 +22,6 @@ SOURCES += \
     qformmain.cpp \
     qformoptions.cpp \
     qformsigntable.cpp \
-    signobject.cpp \
     tcpserver.cpp
 
 HEADERS += \
@@ -39,7 +38,6 @@ HEADERS += \
     qformmain.h \
     qformoptions.h \
     qformsigntable.h \
-    signobject.h \
     tcpserver.h
 
 FORMS += \

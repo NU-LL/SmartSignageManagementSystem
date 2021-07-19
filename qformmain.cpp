@@ -388,7 +388,7 @@ QFormMain::QFormMain(QWidget *parent) :
 //    theModel->setHorizontalHeaderLabels({"id", "组名", "名称", "标示语", "网络状态", "语音设置", "闪光灯设置", "警示设置", "设备控制"}); //设置表头文字
     theModel->setHorizontalHeaderLabels({"id", "组名", "名称", "标示语", "网络状态", "语音状态", "闪光灯状态", "警示状态"}); //设置表头文字
     foreach(SignDevice* signdev, SignDevice::getSignDevTable())
-        addLine(signdev->id, signdev->groupname, signdev->name, signdev->signid, signdev->voice==1, signdev->flash==1, signdev->alert==1);//添加一行到表格中
+        signdev->item = addLine(signdev->id, signdev->groupname, signdev->name, signdev->signid, signdev->voice==1, signdev->flash==1, signdev->alert==1);//添加一行到表格中
 
     //tcp server
     TcpServer& server = TcpServer::getHandle();
@@ -401,6 +401,8 @@ QFormMain::~QFormMain()
 {
     delete ui;
 }
+
+
 
 //消息接收槽函数
 void QFormMain::recMessage(int level, QString title, QString text, int message_id, void* message)
@@ -422,18 +424,43 @@ void QFormMain::recMessage(int level, QString title, QString text, int message_i
     {
         case(MESSAGE_CHANGE_STATUS):
         {
-            //更新所有状态
-            QList<QStandardItem *> list = theModel->findItems(id, Qt::MatchFixedString, 1);//在第一列中查找id
-            for(QStandardItem *aItem : qAsConst(list))
+            TcpDevice* tcpdev = static_cast<TcpDevice*>(message);
+            SignDevice* signdev = SignDevice::findSignDev(tcpdev->id);
+            if(signdev == nullptr)
             {
-                int row = aItem->row();
-//                setStatus(row, device->stabyte);
-                qDebug() << "修改行：" << row;
+                qDebug() << "查找警示牌设备错误，id：" << tcpdev->id;
+                return ;
             }
+            *signdev = *tcpdev;//更新数据
+            signdev->offline = 0;//在线
+            refreshSignDev(signdev);
+
+
+//            //更新所有状态
+//            QList<QStandardItem *> list = theModel->findItems(id, Qt::MatchFixedString, 1);//在第一列中查找id
+//            for(QStandardItem *aItem : qAsConst(list))
+//            {
+//                int row = aItem->row();
+////                setStatus(row, device->stabyte);
+//                qDebug() << "修改行：" << row;
+//            }
             break;
         }
         case(MESSAGE_ADDDEVICE):
         {
+            TcpDevice* tcpdev = static_cast<TcpDevice*>(message);
+            //查看系统中是否已经存在
+            SignDevice* signdev = SignDevice::findSignDev(tcpdev->id);
+            if(signdev == nullptr)//新设备 插入表中
+            {
+                SignDevice* signdev = new SignDevice(tcpdev);
+                addDevice(signdev);
+            }else//老设备上线
+            {
+                *signdev = *tcpdev;//更新数据
+                signdev->offline = 0;//在线
+                refreshSignDev(signdev);
+            }
 //            //插入一行
 //            QString sign;
 //            if(SignTable.find(device->signidx) != SignTable.end())
@@ -536,14 +563,14 @@ void QFormMain::setSwitchCombox(QComboBox *combobox)
 }
 
 //添加一行
-void QFormMain::addLine(const QString& id, const QString& groupname, const QString& name, const QString& signid, bool voice, bool flash, bool alert)
+QStandardItem* QFormMain::addLine(const QString& id, const QString& groupname, const QString& name, const QString& signid, bool voice, bool flash, bool alert)
 {
     //排除意外情况
     Sign* sign = Sign::findSign(signid);
     if(sign == nullptr)
     {
         QMessageBox::warning(this, tr("警告"), QString("未找到该标示语id：")+signid+", 插入设备错误");
-        return ;
+        return nullptr;
     }
 //    SignDevice* signdev = SignDevice::findSignDev(id);
 //    if(signdev == nullptr)
@@ -554,9 +581,11 @@ void QFormMain::addLine(const QString& id, const QString& groupname, const QStri
     //在表格最后添加行
     QList<QStandardItem*> aItemList; //容器类
     QStandardItem *aItem;
+    QStandardItem *res;
 
     //id
     aItem=new QStandardItem(id);
+    res = aItem;
     aItem->setTextAlignment(Qt::AlignCenter);
     aItem->setEditable(false);//禁止编辑
     aItemList << aItem;
@@ -578,6 +607,7 @@ void QFormMain::addLine(const QString& id, const QString& groupname, const QStri
     aItem->setEditable(false);//禁止编辑
     aItem->setForeground(sign->getQtColor());//设置字体颜色
     aItem->setIcon(sign->getIcon());//设置图标
+    aItem->setData(QVariant::fromValue((Sign *)sign));//存放标示语的指针
     aItemList << aItem;
     //网络状态（默认均离线）
     aItem=new QStandardItem("离线");
@@ -618,6 +648,8 @@ void QFormMain::addLine(const QString& id, const QString& groupname, const QStri
     theSelection->clearSelection();//清空选择项
     theSelection->setCurrentIndex(curIndex, QItemSelectionModel::Select);//设置刚插入的行为当前选择行
 
+    return res;
+
     //组名
 //    QComboBox* combobox = new QComboBox(this);
 //    setGroupCombox(combobox);
@@ -645,7 +677,44 @@ void QFormMain::addLine(const QString& id, const QString& groupname, const QStri
 //    ui->tableView->setIndexWidget(theModel->index(theModel->rowCount()-1, 7), combobox);
 }
 
+//更新 SignDevice 中的数据到表格中
+QBitArray QFormMain::refreshSignDev(SignDevice *signdev)
+{
+    QBitArray res(8, 0);
+    Sign *sign = Sign::findSign(signdev->signid);
+    if(sign == nullptr)
+    {
+        QMessageBox::critical(this, "错误", "找不到对应的标示语id："+signdev->signid+" 刷新数据无效");
+        return res;
+    }
+    if(signdev->item == nullptr)
+    {
+        QMessageBox::warning(this, "警告", "item指针无效，刷新数据无效");
+        return res;
+    }
 
+
+    res[1] = modifyCell(signdev->item->row(), 1, signdev->groupname);
+    res[2] = modifyCell(signdev->item->row(), 2, signdev->name);
+    //设置警示语
+    QStandardItem* signItem = theModel->item(signdev->item->row(), 3);//警示语栏
+    Sign * lastsign = signItem->data().value<Sign*>();//取出上次的指针
+    if(lastsign != sign)
+    {
+        //更新标示语
+        res[3] = true;
+        signItem->setForeground(sign->getColor());//设置字体颜色
+        signItem->setIcon(sign->getIcon());//设置图标
+        signItem->setText(sign->text);
+        //修改自定义数据 放入最新指针
+        signItem->setData(QVariant::fromValue((Sign *)sign));//存放标示语的指针
+    }
+    res[4] = modifyCell(signdev->item->row(), 4, signdev->voice==1?"离线":"在线");
+    res[5] = modifyCell(signdev->item->row(), 5, signdev->voice==1?"开":"关");
+    res[6] = modifyCell(signdev->item->row(), 6, signdev->flash==1?"开":"关");
+    res[7] = modifyCell(signdev->item->row(), 7, signdev->alert==1?"开":"关");
+    return res;
+}
 
 ////设置状态
 //void QFormMain::setStatus(int row, quint8 staBytes)
@@ -793,32 +862,34 @@ void QFormMain::on_tableView_doubleClicked(const QModelIndex &index)
     int ret = dlgSignDev->exec();// 以模态方式显示对话框
     if (ret == QDialog::Accepted)//OK按钮被按下
     {
-        bool ret = false;
         //刷新表格数据
-        modifyCell(index.row(), 1, signdev->groupname);
-        modifyCell(index.row(), 2, signdev->name);
-        //设置警示语
+        QBitArray res = refreshSignDev(signdev);
+        //修改相关设置 需要发送给下位机
+        for(int i = 1; i < res.size(); i++)//第0项为id 不可能修改
+        {
+            if(res[i])//该项有改动
+            {
+                //todo 发送信息给下位机 通知设置已经更改
+                //todo 这里只记录了三个check状态 其他改变未记录
+                qDebug() << QString("第")+i+"项有改动";
+
+            }
+        }
+        //有修改 则给下位机发送数据
+        if(*res.bits() != 0)
         {
             Sign *sign = Sign::findSign(signdev->signid);
-            if(sign == nullptr)
-            {
-                QMessageBox::critical(this, "错误", "找不到对应的标示语id："+signdev->signid);
-                delete dlgSignDev;
-                return ;
-            }
-            QStandardItem* signItem = theModel->item(index.row(), 3);//警示语栏
-            signItem->setForeground(sign->getColor());//设置字体颜色
-            signItem->setIcon(sign->getIcon());//设置图标
-            signItem->setText(sign->text);
-        }
-        ret |= modifyCell(index.row(), 5, signdev->TcpDevice::voice==1?"开":"关");
-        ret |= modifyCell(index.row(), 6, signdev->TcpDevice::flash==1?"开":"关");
-        ret |= modifyCell(index.row(), 7, signdev->TcpDevice::alert==1?"开":"关");
-        //修改相关设置 需要发送给下位机
-        if(ret)
-        {
-            //todo 发送信息给下位机 通知设置已经更改
-            //todo 这里只记录了三个check状态 其他改变未记录
+            //发送信息
+            TcpServer& server = TcpServer::getHandle();
+            QByteArray data;
+            data += '0';//模式
+            data += '0'+sign->color;//颜色
+            data += '3';//亮度
+            data += '3';//音量
+            data += 60;//报警时间
+            data += QString("%1").arg(sign->id, 3, QLatin1Char('0')).toLocal8Bit();//提示语编号
+            data += "003";//图片编号
+            server.sendMessage(02, data, signdev->senderName);
         }
     }
     delete dlgSignDev;
