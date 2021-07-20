@@ -500,6 +500,12 @@ void TcpServer::onServerDisconnected()
         unbindTable(info, id);//解绑
 //        QMessageBox::information(this,"提示",QString("客户端断开连接:%1").arg(info),QMessageBox::Ok);
     }
+
+    if(DeviceTab.empty())
+    {
+        //设备全部掉线 停止定时器
+        HeartbeatTimer->stop();
+    }
 }
 
 void TcpServer::onServerDataReady()

@@ -69,7 +69,7 @@ public:
             quint8 offline:1;//最高位
             quint8 undefined:4;
         };
-        quint8 stabyte;//状态字 默认离线
+        quint8 stabyte = 0x08;//状态字 默认离线
     };
     //异常状态
     union{
@@ -128,6 +128,7 @@ public:
     //通过id找对象
     static SignDevice* findSignDev(const QString& id)
     {
+//        SignDeviceTable.value(id);//如果键不存在，则利用值类型的默认构造函数，将返回一个默认值，同时不会创建新的项
         auto iter = SignDeviceTable.find(id);
         if(iter != SignDeviceTable.end())
             return iter.value();
@@ -145,12 +146,13 @@ public:
     };
     //获取整个表，仅仅只有可读权限
     //注意，由于表中存的的对象指针，仍可以通过该指针修改设备（这里仅仅是不能修改这个map）
-    static const QMap<QString, SignDevice*>& getSignDevTable(){return SignDeviceTable;};
+    static const QHash<QString, SignDevice*>& getSignDevTable(){return SignDeviceTable;};
 
 private:
 
     //设备表
-    static QMap<QString, SignDevice*> SignDeviceTable;
+//    QHash
+    static QHash<QString, SignDevice*> SignDeviceTable;
 };
 
 
@@ -219,6 +221,8 @@ private:
     QStandardItemModel * theModel; //数据模型
     QItemSelectionModel *theSelection; //选择模型
 
+    //事件截获
+    bool eventFilter(QObject *watched, QEvent *event);
     //关闭窗口信号
     void closeEvent(QCloseEvent *event);
     //修改某一项

@@ -17,6 +17,7 @@
 #include <QJsonParseError>
 #include <QJsonArray>
 #include <QRegExp>
+#include <QInputDialog>
 #include <QMessageBox>
 #include <QComboBox>
 
@@ -30,7 +31,7 @@
 extern MainWindow* mainWindow;
 
 
-QMap<QString, SignDevice*> SignDevice::SignDeviceTable;
+QHash<QString, SignDevice*> SignDevice::SignDeviceTable;
 
 
 //序列化
@@ -146,7 +147,7 @@ void SignDevice::Init()
     }
     if (!loadFile.open(QIODevice::ReadOnly))
     {
-        qWarning("Couldn't open load file.");
+        qWarning("Couldn't open load file : table.json.");
         return;
     }
     QByteArray loadData = loadFile.readAll();
@@ -174,7 +175,7 @@ bool SignDevice::save()
     QFile saveFile(QDir(DEFAULT_PROFILE_PATH).absoluteFilePath("table.json"));
     if (!saveFile.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate))
     {
-        qWarning("Couldn't open save file.");
+        qWarning("Couldn't open save file : table.json.");
         return false;
     }
     //遍历整个警示语表 存入json
@@ -395,6 +396,9 @@ QFormMain::QFormMain(QWidget *parent) :
     //连接tcp信号槽
     connect(&server, static_cast<void (TcpServer:: *)(int, QString, QString, int, void*)>(&TcpServer::message),
             this, static_cast<void (QFormMain:: *)(int, QString, QString, int, void*)>(&QFormMain::recMessage));
+
+    //安装过滤器 捕获搜索快捷键
+    installEventFilter(this);
 }
 
 QFormMain::~QFormMain()
@@ -709,7 +713,7 @@ QBitArray QFormMain::refreshSignDev(SignDevice *signdev)
         //修改自定义数据 放入最新指针
         signItem->setData(QVariant::fromValue((Sign *)sign));//存放标示语的指针
     }
-    res[4] = modifyCell(signdev->item->row(), 4, signdev->voice==1?"离线":"在线");
+    res[4] = modifyCell(signdev->item->row(), 4, signdev->offline==1?"离线":"在线");
     res[5] = modifyCell(signdev->item->row(), 5, signdev->voice==1?"开":"关");
     res[6] = modifyCell(signdev->item->row(), 6, signdev->flash==1?"开":"关");
     res[7] = modifyCell(signdev->item->row(), 7, signdev->alert==1?"开":"关");
@@ -744,6 +748,40 @@ QBitArray QFormMain::refreshSignDev(SignDevice *signdev)
 
 
 
+
+
+//事件截获
+bool QFormMain::eventFilter(QObject *watched, QEvent *event)
+{
+    if(nullptr != event && event->type() == QEvent::KeyPress)
+    {
+        QKeyEvent* keyEvent = (QKeyEvent*)event;
+        if((keyEvent->key() == Qt::Key_F) && (keyEvent->modifiers() == Qt::ControlModifier))//Ctrl+F 搜索
+        {
+//            qDebug() << "Ctrl+F";
+            bool ok=false;
+            QString searchname = QInputDialog::getText(this, tr("搜索标示语名称"),
+                                                 tr("请输入待搜索的标示语名称："), QLineEdit::Normal,
+                                                 QString(""), &ok);
+            //只有当用户输入不为空且不在列表中存在时才插入
+            if (ok && !searchname.isEmpty())
+            {
+                bool sta = false;
+                foreach(SignDevice* signdev, SignDevice::getSignDevTable())
+                    if(signdev->name == searchname)
+                    {
+                        sta = true;
+                        ui->tableView->selectRow(signdev->item->row());//光标选中该行
+//                        theSelection->setCurrentIndex(signdev->item->index(), QItemSelectionModel::Select);
+                        break;
+                    }
+                if(!sta)
+                    QMessageBox::information(this, "通知", "没有找到警示牌："+searchname);
+            }
+        }
+    }
+    return QWidget::eventFilter(watched, event);
+}
 
 //关闭窗口信号
 void QFormMain::closeEvent(QCloseEvent *event)
@@ -875,8 +913,8 @@ void QFormMain::on_tableView_doubleClicked(const QModelIndex &index)
 
             }
         }
-        //有修改 则给下位机发送数据
-        if(*res.bits() != 0)
+        //有修改 同时下位机在线 则给下位机发送数据
+        if(*res.bits() != 0 && signdev->offline == 0)
         {
             Sign *sign = Sign::findSign(signdev->signid);
             //发送信息

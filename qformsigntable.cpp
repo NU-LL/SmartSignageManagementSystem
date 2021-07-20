@@ -70,7 +70,7 @@ void Sign::Init()
     }
     if (!loadFile.open(QIODevice::ReadOnly))
     {
-        qWarning("Couldn't open load file.");
+        qWarning("Couldn't open load file : signtable.json.");
         return;
     }
     QByteArray loadData = loadFile.readAll();
@@ -98,7 +98,7 @@ bool Sign::save()
     QFile saveFile(QDir(DEFAULT_PROFILE_PATH).absoluteFilePath("signtable.json"));
     if (!saveFile.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate))
     {
-        qWarning("Couldn't open save file.");
+        qWarning("Couldn't open save file : signtable.json.");
         return false;
     }
     //遍历整个警示语表 存入json
