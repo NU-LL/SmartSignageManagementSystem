@@ -36,7 +36,11 @@ public:
 
     //对 TcpDevice 的转换
     SignDevice(TcpDevice& tcpdev)
-        :senderName(tcpdev.info), id(tcpdev.id), groupname(QString("未命名分组")), name(tcpdev.name), signid(tcpdev.signid) {};//拷贝构造
+        :senderName(tcpdev.info), id(tcpdev.id), groupname(QString("未命名分组")), name(tcpdev.name), signid(tcpdev.signid)
+        , stabyte(tcpdev.stabyte), stafault(tcpdev.stafault) {};//拷贝构造
+    SignDevice(TcpDevice* tcpdev)
+        :senderName(tcpdev->info), id(tcpdev->id), groupname(QString("未命名分组")), name(tcpdev->name), signid(tcpdev->signid)
+        , stabyte(tcpdev->stabyte), stafault(tcpdev->stafault){};//拷贝构造
     SignDevice& operator=(const TcpDevice& tcpdev)
     {
         this->senderName = tcpdev.info;

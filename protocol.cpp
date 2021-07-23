@@ -16,7 +16,7 @@ Frame::Frame(quint8 addr, quint8 type, const QByteArray &data)
     _data += (data.length() >> 8) & 0xff;//长度
     _data += data.length() & 0xff;
     _data += data;//数据
-    quint16 crc = genCrc(_data);
+    quint16 crc = genCrc(_data.right(_data.size()-1));//不需要计算帧头
     _data += (crc >> 8) & 0xff;//校验位
     _data += crc & 0xff;
     _data += frame_tail;//帧尾
@@ -50,9 +50,9 @@ void Frame::setFrame(quint8 addr, quint8 type, const QByteArray &data, bool genc
 
     if(gencrc)
     {
-        temp.push_front(Frame::frame_head);//加上帧头 计算crc
+//        temp.push_front(Frame::frame_head);//加上帧头 计算crc
         quint16 crc = genCrc(temp);
-        temp.remove(0, 1);//移除帧头
+//        temp.remove(0, 1);//移除帧头
         temp += (crc >> 8) & 0xff;//校验位
         temp += crc & 0xff;
         //_data替换起始偏移 替换长度 替换内容
@@ -76,9 +76,9 @@ void Frame::setFrame(const QByteArray &data, bool gencrc)
     {
         temp += _data[1];temp += _data[2];//地址
         temp += _data[3];temp += _data[4];//类型
-        temp.push_front(Frame::frame_head);//加上帧头 计算crc
+//        temp.push_front(Frame::frame_head);//加上帧头 计算crc
         quint16 crc = genCrc(temp);
-        temp.remove(0, 1);//移除帧头
+//        temp.remove(0, 1);//移除帧头
         temp += (crc >> 8) & 0xff;//校验位
         temp += crc & 0xff;
         //_data替换起始偏移 替换长度 替换内容
@@ -221,9 +221,9 @@ bool Protocol::process(quint8 ch)
             raw += ch;
             if(times++ >= 1)
             {
-                raw.push_front(Frame::frame_head);//加上帧头 计算crc
+//                raw.push_front(Frame::frame_head);//加上帧头 计算crc
                 quint16 gencrc = Frame::genCrc(raw.left(raw.length()-2));
-                raw.remove(0, 1);//移除帧头
+//                raw.remove(0, 1);//移除帧头
 //                qDebug() << QString("0x%1").arg((((raw[raw.length()-2]) << 8)&0xff00), 4, 16, QLatin1Char('0'));
 //                qDebug() << QString("0x%1").arg(raw[raw.length()-1], 4, 16, QLatin1Char('0'));
 

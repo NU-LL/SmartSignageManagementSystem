@@ -492,7 +492,8 @@ void TcpServer::onServerDisconnected()
         qDebug() << "连接断开，ip：" << tcp->peerAddress().toString() << " 端口：" << tcp->peerPort();
         QString info=tcp->peerAddress().toString()+":"+QString("%1").arg(tcp->peerPort());
         emit message(INFORMATION, tr("提示"), QString("客户端断开连接:%1").arg(info));//发送 messagebox
-        emit message(INFORMATION, tcp->peerAddress().toString(), QString::number(tcp->peerPort()), MESSAGE_DISCONNECTION);//发送消息
+//        emit message(INFORMATION, tcp->peerAddress().toString(), QString::number(tcp->peerPort()), MESSAGE_DISCONNECTION);//发送消息
+        emit message(INFORMATION, tcp->peerAddress().toString(), QString::number(tcp->peerPort()), MESSAGE_DISCONNECTION, findTcpDevice_ip(info));//发送消息
 
         QString id = Ip2IdTable[info];
         delete DeviceTab[id];//删除设备对象

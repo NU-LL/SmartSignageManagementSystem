@@ -452,7 +452,7 @@ void QFormSignTable::on_pushButton_Add_clicked()
     //如何做到用户在表格中修改后实时同步到Sign中？
     //formmain中也存在这个问题
 
-    Sign* sign = new Sign(QString("%1").arg(theModel->rowCount()+1, 2, 10, QLatin1Char('0')), "警示语", QString(""), 0);
+    Sign* sign = new Sign(QString("%1").arg(theModel->rowCount()+1, 3, 10, QLatin1Char('0')), QString(""), QString(""), 0);
 
     //弹窗
     QDialogSetSign *dlgSign = new QDialogSetSign(this);

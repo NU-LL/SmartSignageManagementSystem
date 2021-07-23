@@ -457,7 +457,8 @@ void QFormMain::recMessage(int level, QString title, QString text, int message_i
             SignDevice* signdev = SignDevice::findSignDev(tcpdev->id);
             if(signdev == nullptr)//新设备 插入表中
             {
-                SignDevice* signdev = new SignDevice(tcpdev);
+                SignDevice* signdev = new SignDevice(*tcpdev);
+                signdev->offline = 0;//在线
                 addDevice(signdev);
             }else//老设备上线
             {
@@ -484,14 +485,25 @@ void QFormMain::recMessage(int level, QString title, QString text, int message_i
         }
         case(MESSAGE_DISCONNECTION):
         {
-            //删除一行
-            QList<QStandardItem *> list = theModel->findItems(id, Qt::MatchFixedString, 1);//在第一列中查找id
-            for(QStandardItem *aItem : qAsConst(list))
+            TcpDevice* tcpdev = static_cast<TcpDevice*>(message);
+            //查看系统中是否已经存在
+            SignDevice* signdev = SignDevice::findSignDev(tcpdev->id);
+            if(signdev == nullptr)//异常
             {
-                int row = aItem->row();
-                qDebug() << "删除行：" << row;
-                theModel->removeRow(row);
+                QMessageBox::warning(this, "警告", "该设备"+tcpdev->id+"未在列表中");
+            }else//断线
+            {
+                signdev->offline = 1;//断线
+                refreshSignDev(signdev);
             }
+//            //删除一行
+//            QList<QStandardItem *> list = theModel->findItems(id, Qt::MatchFixedString, 1);//在第一列中查找id
+//            for(QStandardItem *aItem : qAsConst(list))
+//            {
+//                int row = aItem->row();
+//                qDebug() << "删除行：" << row;
+//                theModel->removeRow(row);
+//            }
             break;
         }
     }
@@ -921,12 +933,12 @@ void QFormMain::on_tableView_doubleClicked(const QModelIndex &index)
             TcpServer& server = TcpServer::getHandle();
             QByteArray data;
             data += '0';//模式
-            data += '0'+sign->color;//颜色
-            data += '3';//亮度
-            data += '3';//音量
+            data += sign->color;//颜色
+            data += 7;//亮度
+            data += 4;//音量
             data += 60;//报警时间
             data += QString("%1").arg(sign->id, 3, QLatin1Char('0')).toLocal8Bit();//提示语编号
-            data += "003";//图片编号
+            data += "000";//图片编号
             server.sendMessage(02, data, signdev->senderName);
         }
     }
