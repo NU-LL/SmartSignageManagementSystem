@@ -81,7 +81,7 @@ public:
             quint8 offline:1;//最高位
             quint8 undefined:4;
         };
-        quint8 stabyte;//状态字 默认离线
+        quint8 stabyte = 0x08;//状态字 默认离线
     };
     //异常状态
     union{
@@ -94,7 +94,7 @@ public:
             quint8 manual_configuration:1;//红外遥控手动配置中 //最高位
             quint8 undefined:2;
         }fault;
-        quint8 stafault;
+        quint8 stafault = 0x00;
     };
 private:
     static int heartbeats;//当前心跳数量
@@ -136,7 +136,7 @@ public:
 
 
 
-    qint64 send(const char *data, qint64 maxSize, const QString& objectName = QString());
+//    qint64 send(const char *data, qint64 maxSize, const QString& objectName = QString());
     qint64 send(const QByteArray &byteArray, const QString& objectName = QString());
 
 

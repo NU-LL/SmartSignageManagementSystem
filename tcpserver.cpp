@@ -63,23 +63,23 @@ void TcpServer::stopServer()
     }
 }
 
-qint64 TcpServer::send(const char *data, qint64 maxSize, const QString& objectName)
-{
-    int res = 0;
-    QList<QTcpSocket *> m_tcps = m_server.findChildren<QTcpSocket *>(objectName);
-    foreach (QTcpSocket *tcp, m_tcps)
-    {
-//        qDebug() << tcp->objectName();
-        int temp = tcp->write(data, maxSize);
-        res = std::max(temp, res);
-        if(-1 == temp)
-        {
-            qDebug() << "发送给" + tcp->objectName() + "失败，停止本轮数据发送";
-            return -1;
-        }
-    }
-    return res;
-}
+//qint64 TcpServer::send(const char *data, qint64 maxSize, const QString& objectName)
+//{
+//    int res = 0;
+//    QList<QTcpSocket *> m_tcps = m_server.findChildren<QTcpSocket *>(objectName);
+//    foreach (QTcpSocket *tcp, m_tcps)
+//    {
+////        qDebug() << tcp->objectName();
+//        int temp = tcp->write(data, maxSize);
+//        res = std::max(temp, res);
+//        if(-1 == temp)
+//        {
+//            qDebug() << "发送给" + tcp->objectName() + "失败，停止本轮数据发送";
+//            return -1;
+//        }
+//    }
+//    return res;
+//}
 
 qint64 TcpServer::send(const QByteArray &byteArray, const QString& objectName)
 {
@@ -89,6 +89,8 @@ qint64 TcpServer::send(const QByteArray &byteArray, const QString& objectName)
     {
 //        qDebug() << tcp->objectName();
         int temp = tcp->write(byteArray);
+        qDebug() << "[发送到"+ tcp->peerAddress().toString()+":"+QString::number(tcp->peerPort())+"]:";
+        qDebug() << QString::fromLocal8Bit(byteArray) << " <==> " << byteArrayToHexString(byteArray);
         res = std::max(temp, res);
         if(-1 == temp)
         {

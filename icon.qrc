@@ -1,0 +1,10 @@
+<RCC>
+    <qresource prefix="/">
+        <file>icon/kaiguanguan.png</file>
+        <file>icon/kaiguankai.png</file>
+        <file>icon/lixian.png</file>
+        <file>icon/lixian_1.png</file>
+        <file>icon/zaixian.png</file>
+        <file>icon/zaixian_1.png</file>
+    </qresource>
+</RCC>

@@ -86,7 +86,7 @@ public:
             quint8 manual_configuration:1;//红外遥控手动配置中 //最高位
             quint8 undefined:2;
         }fault;
-        quint8 stafault;
+        quint8 stafault = 0x00;//默认无警报
     };
 
 public:
@@ -230,7 +230,7 @@ private:
     //关闭窗口信号
     void closeEvent(QCloseEvent *event);
     //修改某一项
-    bool modifyCell(int row, int column, const QString &text){
+    bool modifyCell(int row, int column, const QString &text, const QIcon &icon = QIcon()){
         QStandardItem* aItem = theModel->item(row, column);
         if(aItem == nullptr)
         {
@@ -240,7 +240,11 @@ private:
         if(aItem->text() == text)
             return false;
         else
+        {
             aItem->setText(text);
+            if(!icon.isNull())
+                aItem->setIcon(icon);
+        }
         return true;
     };
 
@@ -261,7 +265,8 @@ public:
 
     void addDevice(SignDevice* signdev)
     {
-        signdev->item = addLine(signdev->id, signdev->groupname, signdev->name, signdev->signid, signdev->voice==1, signdev->flash==1, signdev->alert==1);
+        signdev->item = addLine(signdev);
+//        signdev->item = addLine(signdev->id, signdev->groupname, signdev->name, signdev->signid, signdev->voice==1, signdev->flash==1, signdev->alert==1);
         SignDevice::registerSignDev(signdev->id, signdev);
     };
     void delDevice(int row)
@@ -288,6 +293,8 @@ private:
 
     //添加一行
     //返回第一栏（id）的指针（插入失败返回空）
+    QStandardItem* addLine(const SignDevice* signdev);
+    //（已经废弃）
     QStandardItem* addLine(const QString& id, const QString& groupname, const QString& name, const QString& signid, bool voice=false, bool flash=false, bool alert=false);
     //删除一行
     void delLine(int row){theModel->removeRow(row);};
