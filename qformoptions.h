@@ -17,11 +17,17 @@ public:
 
     static QString ConfigFilePath;
     static QString IconPath;
+    static bool defaultStartServer;
+
+    static void Init();
+    static bool save();
 
 private slots:
     void on_pushButton_ConfigFile_clicked();
 
     void on_pushButton_Icon_clicked();
+
+    void on_checkBox_stateChanged(int arg1);
 
 private:
     Ui::QFormOptions *ui;

@@ -17,14 +17,20 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
-    //tcp server
-    TcpServer& server = TcpServer::getHandle();
-    server.startServer(DEFAULT_PORT);//启动服务器
-    //连接tcp信号槽
-    connect(&server, static_cast<void (TcpServer:: *)(int, QString, QString, int, void*)>(&TcpServer::message),
-            this, static_cast<void (MainWindow:: *)(int, QString, QString, int, void*)>(&MainWindow::recMessage));
-    connect(&server, static_cast<void (TcpServer:: *)(QTcpSocket *, const QByteArray& data)>(&TcpServer::recData),
-            this, static_cast<void (MainWindow:: *)(QTcpSocket *, const QByteArray& data)>(&MainWindow::recData));
+    //初始化配置文件
+    QFormOptions::Init();
+    if(QFormOptions::defaultStartServer)//根据配置决定是否自动联网
+    {
+        //tcp server
+        TcpServer& server = TcpServer::getHandle();
+        server.startServer(DEFAULT_PORT);//启动服务器
+        //连接tcp信号槽
+        connect(&server, static_cast<void (TcpServer:: *)(int, QString, QString, int, void*)>(&TcpServer::message),
+                this, static_cast<void (MainWindow:: *)(int, QString, QString, int, void*)>(&MainWindow::recMessage));
+        connect(&server, static_cast<void (TcpServer:: *)(QTcpSocket *, const QByteArray& data)>(&TcpServer::recData),
+                this, static_cast<void (MainWindow:: *)(QTcpSocket *, const QByteArray& data)>(&MainWindow::recData));
+    }
+
 
 
     QTimer::singleShot(10, this, &MainWindow::on_actionMain_triggered);//单次定时器 10ms后触发

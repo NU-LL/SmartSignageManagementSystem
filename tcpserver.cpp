@@ -7,7 +7,7 @@
 #include <QCoreApplication>
 
 #include "mainwindow.h"
-
+#include "qformmain.h"
 
 extern MainWindow* mainWindow;
 
@@ -396,7 +396,14 @@ void TcpServer::onServerNewConnection()
             if(data[pos+i] != 0)
                 location += data[pos+i];
 
-        bindTable(info, id);//绑定
+        //如果该设备已经存在，需要提醒
+        if(findIp(id) != ERROR)
+        {
+            SignDevice* signdev = SignDevice::findSignDev(id);
+            emit message(WARNING, tr("警告"), "警示牌 "+signdev->name+" 和新警示牌 "+name+" id冲突("+id+")新警示牌不会添加");//发送 messagebox
+            tcp->close();//主动关闭链接
+        }else
+            bindTable(info, id);//绑定
 
         callback_completion_flag = true;//设置回调标志
     });
@@ -462,23 +469,24 @@ void TcpServer::onServerNewConnection()
 //    disregisterCallback(13);
 
     //已经获取到设备的必要信息 发送添加设备
-    QString id = Ip2IdTable[info];
-//    DeviceTab[id] = TcpDevice(info, id, name, (quint8)0);
+    QString id = findId(info);
+    if(id != ERROR)
+    {
+        DeviceTab[id] = new TcpDevice(info, id, name, (quint8)0);
+        DeviceTab[id]->location = location;
+    //    DeviceTab[id]->sign = sign;
+        DeviceTab[id]->ip = tcp->peerAddress().toString();
+        DeviceTab[id]->port = tcp->peerPort();
 
-    DeviceTab[id] = new TcpDevice(info, id, name, (quint8)0);
-    DeviceTab[id]->location = location;
-//    DeviceTab[id]->sign = sign;
-    DeviceTab[id]->ip = tcp->peerAddress().toString();
-    DeviceTab[id]->port = tcp->peerPort();
 
 
+        //立马执行超时函数 更新标识位
+        timeout();
+        //激活定时器 周期性调用超时函数
+        HeartbeatTimer->start(timerInterval);
 
-    //立马执行超时函数 更新标识位
-    timeout();
-    //激活定时器 周期性调用超时函数
-    HeartbeatTimer->start(timerInterval);
-
-    emit message(INFORMATION, tcp->peerAddress().toString(), QString::number(tcp->peerPort()), MESSAGE_ADDDEVICE, DeviceTab[id]);//发送消息
+        emit message(INFORMATION, tcp->peerAddress().toString(), QString::number(tcp->peerPort()), MESSAGE_ADDDEVICE, DeviceTab[id]);//发送消息
+    }
 }
 
 void TcpServer::onServerConnected()

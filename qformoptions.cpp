@@ -3,12 +3,81 @@
 #include "config.h"
 
 #include <QDir>
+#include <QFile>
+#include <QTextStream>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonParseError>
+#include <QJsonArray>
 #include <QFileDialog>
-
+#include <QDebug>
 
 
 QString QFormOptions::ConfigFilePath = QDir(DEFAULT_PROFILE_PATH).absolutePath();
 QString QFormOptions::IconPath = QDir(DEFAULT_ICON_PATH).absolutePath();
+bool QFormOptions::defaultStartServer = true;
+
+
+
+//初始化列表
+//需要一开始就调用，获得全局唯一的组表
+void QFormOptions::Init()
+{
+    static bool initflag = false;
+    if(initflag)//确保只初始化一次
+        return ;
+
+    //json文件存储
+    QFile loadFile(QDir(DEFAULT_PROFILE_PATH).absoluteFilePath("options.json"));
+    if(!loadFile.exists())
+    {
+        loadFile.open(QIODevice::WriteOnly);
+        loadFile.close();
+        save();//直接保存默认数据
+    }
+    if (!loadFile.open(QIODevice::ReadOnly))
+    {
+        qWarning("Couldn't open load file : options.json.");
+        return;
+    }
+    QByteArray loadData = loadFile.readAll();
+    loadFile.close();
+    QJsonDocument loadDoc(QJsonDocument::fromJson(loadData));
+//    QJsonDocument loadDoc(QJsonDocument::fromBinaryData(saveData));
+
+    QJsonObject json = loadDoc.object();
+    ConfigFilePath = json["ConfigFilePath"].toString();
+    IconPath = json["IconPath"].toString();
+    defaultStartServer = json["defaultStartServer"].toBool();
+
+
+    initflag = true;
+}
+
+//保存配置
+bool QFormOptions::save()
+{
+    //json文件存储（注意，会清空）
+    QFile saveFile(QDir(DEFAULT_PROFILE_PATH).absoluteFilePath("options.json"));
+    if (!saveFile.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate))
+    {
+        qWarning("Couldn't open save file : options.json.");
+        return false;
+    }
+    //遍历整个警示语表 存入json
+    QJsonObject jsonObj;
+    jsonObj["ConfigFilePath"] = ConfigFilePath;
+    jsonObj["IconPath"] = IconPath;
+    jsonObj["defaultStartServer"] = defaultStartServer;
+
+    QJsonDocument saveDoc(jsonObj);
+    saveFile.write(saveDoc.toJson());
+//    saveFile.write(saveDoc.toBinaryData());
+    saveFile.close();
+    return true;
+}
+
+
 
 QFormOptions::QFormOptions(QWidget *parent) :
     QWidget(parent),
@@ -40,6 +109,7 @@ void QFormOptions::on_pushButton_ConfigFile_clicked()
     {
         ui->lineEdit_ConfigFilePath->setText(aFilePathName);
         ConfigFilePath = aFilePathName;
+        save();
     }
 }
 
@@ -51,6 +121,18 @@ void QFormOptions::on_pushButton_Icon_clicked()
     {
         ui->lineEdit_IconPath->setText(aFilePathName);
         IconPath = aFilePathName;
+        save();
     }
+}
+
+
+void QFormOptions::on_checkBox_stateChanged(int arg1)
+{
+    if(arg1 == Qt::Checked)//勾选
+    {
+        defaultStartServer = true;
+    }else
+        defaultStartServer = false;
+    save();
 }
 

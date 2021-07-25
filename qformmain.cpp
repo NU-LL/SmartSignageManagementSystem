@@ -376,6 +376,8 @@ QFormMain::QFormMain(QWidget *parent) :
     buttonDelegate buttondelegate;
 //    ui->tableView->setItemDelegateForColumn(3, &buttondelegate);
 
+    //初始化配置文件
+    QFormOptions::Init();
     //初始化标示语表
     Sign::Init();
     //初始化分组
@@ -460,6 +462,12 @@ void QFormMain::recMessage(int level, QString title, QString text, int message_i
             {
                 SignDevice* signdev = new SignDevice(*tcpdev);
                 signdev->offline = 0;//在线
+                //提醒用户 新设备上线
+                QMessageBox* msgBox = new QMessageBox(QMessageBox::Information, "通知", "新设备："+signdev->name+" 上线", QMessageBox::Ok, this);
+                msgBox->setAttribute( Qt::WA_DeleteOnClose ); //makes sure the msgbox is deleted automatically when closed
+                msgBox->setModal( false ); // if you want it non-modal
+                msgBox->show();
+
                 addDevice(signdev);
             }else//老设备上线
             {
@@ -904,6 +912,13 @@ QBitArray QFormMain::refreshSignDev(SignDevice *signdev)
     }else
         sta = "无异常";
     res[8] = modifyCell(signdev->item->row(), 8, sta);
+    if(res[8])//如果修改了 则需要提醒
+    {
+        QMessageBox* msgBox = new QMessageBox(QMessageBox::Warning, "警告", signdev->name+":"+sta, QMessageBox::Ok, this);
+        msgBox->setAttribute( Qt::WA_DeleteOnClose ); //makes sure the msgbox is deleted automatically when closed
+        msgBox->setModal( false ); // if you want it non-modal
+        msgBox->show();
+    }
 
 //    res[4] = modifyCell(signdev->item->row(), 4, signdev->offline==1?"离线":"在线", );
 //    res[5] = modifyCell(signdev->item->row(), 5, signdev->voice==1?"开":"关");
@@ -1114,15 +1129,25 @@ void QFormMain::on_tableView_doubleClicked(const QModelIndex &index)
             Sign *sign = Sign::findSign(signdev->signid);
             //发送信息
             TcpServer& server = TcpServer::getHandle();
+            TcpDevice* tcpdev = server.findTcpDevice(signdev->id);
             QByteArray data;
-            data += '0';//模式
+            data += signdev->stabyte;//模式，即状态字
             data += sign->color;//颜色
-            data += 7;//亮度
-            data += 4;//音量
-            data += 60;//报警时间
+            data += tcpdev->light;//亮度
+            data += tcpdev->vol;//音量
+            data += tcpdev->delay;//报警时间
             data += QString("%1").arg(sign->id, 3, QLatin1Char('0')).toLocal8Bit();//提示语编号
             data += "000";//图片编号
-            server.sendMessage(02, data, signdev->senderName);
+            server.sendMessage(02, data, signdev->senderName);//发送状态信息
+            data.clear();
+
+            if(res[3])//只有当警示语变更时才发送文本信息
+            {
+                data += QString("%1").arg(sign->id, 3, QLatin1Char('0')).toLocal8Bit();//提示语编号
+                data += sign->text.toLocal8Bit();//警示语内容
+                server.sendMessage(12, data, signdev->senderName);//发送警示语文本信息
+                data.clear();
+            }
         }
     }
     delete dlgSignDev;
