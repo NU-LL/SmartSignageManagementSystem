@@ -4,6 +4,7 @@
 #include <QTime>
 #include <QTimer>
 #include <QMessageBox>
+#include <QElapsedTimer>
 #include <QCoreApplication>
 
 #include "mainwindow.h"
@@ -14,16 +15,18 @@ extern MainWindow* mainWindow;
 
 QString TcpServer::ERROR = QString(tr("未找到对应元素"));
 
+
 TcpServer::TcpServer(QObject *parent) : QObject(parent)
 {
     //周期定时器 心跳状态包
     HeartbeatTimer = new QTimer(this);
-    connect(HeartbeatTimer, &QTimer::timeout, this, &TcpServer::timeout);
+    connect(HeartbeatTimer, &QTimer::timeout, this, static_cast<void (TcpServer:: *) (void)>(&TcpServer::timeout));
 }
 
 TcpServer::~TcpServer()
 {
-    disconnect(HeartbeatTimer, &QTimer::timeout, this, &TcpServer::timeout);
+//    disconnect(HeartbeatTimer, &QTimer::timeout, nullptr, nullptr);//断开timeout的所有连接
+    disconnect(HeartbeatTimer, &QTimer::timeout, this, static_cast<void (TcpServer:: *) (void)>(&TcpServer::timeout));
     HeartbeatTimer->stop();
     delete HeartbeatTimer;
 
@@ -89,8 +92,9 @@ qint64 TcpServer::send(const QByteArray &byteArray, const QString& objectName)
     {
 //        qDebug() << tcp->objectName();
         int temp = tcp->write(byteArray);
-        qDebug() << "[发送到"+ tcp->peerAddress().toString()+":"+QString::number(tcp->peerPort())+"]:";
-        qDebug() << QString::fromLocal8Bit(byteArray) << " <==> " << byteArrayToHexString(byteArray);
+        qDebug();
+        qDebug() << "server ==> ["+ tcp->peerAddress().toString()+":"+QString::number(tcp->peerPort())+"]:";
+        qDebug() << QString::fromLocal8Bit(byteArray) << " ---- " << byteArrayToHexString(byteArray);
         res = std::max(temp, res);
         if(-1 == temp)
         {
@@ -104,7 +108,7 @@ qint64 TcpServer::send(const QByteArray &byteArray, const QString& objectName)
 
 
 //注册回调函数
-bool TcpServer::registerCallback(quint8 type, std::function<void (TcpDevice*, quint8, const QByteArray &)> func)
+bool TcpServer::registerCallback(quint8 type, std::function<void (void*, quint8, const QByteArray &)> func)
 {
     if(CallbackTable.find(type) == CallbackTable.end())
         CallbackTable[type] = func;//注册
@@ -138,70 +142,34 @@ int TcpServer::sendMessage_noblock(quint8 addr, quint8 type, const QByteArray& d
 }
 
 
-//阻塞式发送 不可重入
-//返回值：
-//0：正常
-//-1：发送失败
-//-2：超时
-//-3：重入
-int TcpServer::sendMessage(quint8 addr, quint8 type, const QByteArray &data, const QString& objectName, callback_t func, int timeover)
+//阻塞式发送
+void TcpServer::sendMessage(TcpDevice* tcpdev, quint8 addr, quint8 type, const QByteArray &data, callback_t func, int timeover)
 {
-    static bool sendflag = false;//重入标志
-    callback_completion_flag = false;
-
-    //检查重入
-    if(sendflag)
+    if(tcpdev == nullptr)
+        return ;
+    QTimer t;
+    QEventLoop loop;//创建事件循环
+    t.setSingleShot(true);
+    connect(&t, &QTimer::timeout, &loop, &QEventLoop::quit);  //异步调用超时退出
+    connect(tcpdev, &TcpDevice::received, &loop, &QEventLoop::quit);  //异步调用完成退出
+    //调用异步函数
+    if(func == nullptr)//注册回调
     {
-//        QMessageBox::warning(this, tr("警告"), tr("请等待上一条信息发送完成"));
-        return -3;
-    }
-
-    sendflag = true;//防止重入
-    //注册
-    if(func == nullptr)
-    {
-        CallbackTable[type] = [&](TcpDevice*, quint8, const QByteArray& data1)
+        CallbackTable[type] = [this, type](void*, quint8, const QByteArray& data1)
         {
             if(data1[0] == '0')
-                QMessageBox::information(mainWindow, tr("通知"), tr("发送成功"));
+                emit message(INFORMATION, tr("提醒"), QString("发送%1命令成功").arg(type));//发送 messagebox
             else
-                QMessageBox::warning(mainWindow, tr("警告"), tr("设备处理失败"));
-            callback_completion_flag = true;//设置回调标志
+                emit message(WARNING, tr("警告"), QString("设备处理失败[%1命令]").arg(type));//发送 messagebox
         };
     }else
         CallbackTable[type] = func;
+    sendMessage_noblock(addr, type, data, tcpdev->info);
+    t.start(timeover);
 
-
-
-    Frame frame(addr, type, data);
-
-    //发送数据
-    if(send(frame.getFrame(), objectName) == -1)
-    {
-        sendflag = false;
-//        QMessageBox::warning(this, tr("警告"), tr("数据发送失败"));
-        QMessageBox::warning(mainWindow, tr("警告"), tr("数据发送失败"));
-        return -1;//发送失败
-    }
-
-
-    QTime dieTime = QTime::currentTime().addMSecs(timeover);
-    while( QTime::currentTime() < dieTime && callback_completion_flag == false)
-    {
-        QCoreApplication::processEvents(QEventLoop::AllEvents, 100);//ms
-    }
-    if(callback_completion_flag == false)
-    {
-//        QMessageBox::warning(this, tr("警告"), tr("应答信号超时，类型：") + QString::number(type));
-        QMessageBox::warning(mainWindow, tr("警告"), tr("应答信号超时，类型：") + QString::number(type));
-        sendflag = false;
-        return -2;//超时
-    }
+    loop.exec();//事件循环开始，阻塞，直到定时时间到或收到received信号
     disregisterCallback(type);//主动删除回调函数
-    sendflag = false;
-    return 0;
 }
-
 
 
 
@@ -275,63 +243,103 @@ void TcpServer::timeout()
 
         //这种方式在第一次与节点插入删除时可能不会发送到，但是稳定后是一定可以发送到的
         auto it = DeviceTab.begin()+idx;
+        if(it == DeviceTab.end())
+        {
+            idx = 0;
+            return ;
+        }
         TcpDevice* device = it.value();
         if(device == nullptr)
         {
             qCritical() << "device == nullptr, idx:" << idx << " key:" << it.key() << " val:" << it.value();
             return ;
         }
-        // 仅仅支持服务器主动发送 不支持下位机主动上报
-        QByteArray data;
-        sendMessage(01, data, device->info, [&](TcpDevice* device, quint8, const QByteArray &data){
-            if(data[0] != '0')
-            {
-                QMessageBox::warning(mainWindow, tr("警告"), QString("设备处理状态信号[01帧]失败，故障信息：0x%1").arg(data[1], 2, 16, QLatin1Char('0')));
-                return ;
-            }
-            if(data.size() != 0x0d)
-            {
-                QMessageBox::warning(mainWindow, tr("警告"), QString("状态信号[01帧]数据长度错误"));
-                return ;
-            }
-            if(device == nullptr)
-            {
-                qDebug() << "device 为空";
-                return ;
-            }
+        //初始化才能发送数据
+        if(device->init)
+        {
+            // 仅仅支持服务器主动发送 不支持下位机主动上报
+            QByteArray data;
+            //一般状态
+            sendMessage(device, 00, 01, data, [this](void* dev, quint8, const QByteArray &data){
+                TcpDevice* device = (TcpDevice*)dev;
+                if(data[0] != '0')
+                {
+    //                QMessageBox::warning(mainWindow, tr("警告"), QString("设备处理状态信号[01帧]失败，故障信息：0x%1").arg(data[1], 2, 16, QLatin1Char('0')));
+                    emit message(WARNING, tr("警告"), QString("设备处理状态信号[01帧]失败，故障信息：0x%1").arg(data[1], 2, 16, QLatin1Char('0')));//发送 messagebox
+                    return ;
+                }
+                if(data.size() != 0x0d)
+                {
+    //                QMessageBox::warning(mainWindow, tr("警告"), QString("状态信号[01帧]数据长度错误"));
+                    emit message(WARNING, tr("警告"), "状态信号[01帧]数据长度错误");//发送 messagebox
+                    return ;
+                }
+                if(device == nullptr)
+                {
+                    qDebug() << "device 为空";
+                    return ;
+                }
 
-            quint8 staFault = data[1];//异常状态
-            quint8 staBit = data[2];//状态字
-            quint8 color = data[3];//颜色
-            quint8 light = data[4];//亮度
-            quint8 vol = data[5];//音量
-            quint8 delay = data[6];//报警时间
-            QString signNum;//警示语标号
-            signNum += data[7];
-            signNum += data[8];
-            signNum += data[9];
-            QString imageNum;//图片编号
-            imageNum += data[10];
-            imageNum += data[11];
-            imageNum += data[12];
+                quint8 staFault = data[1];//异常状态
+                quint8 staBit = data[2];//状态字
+                quint8 color = data[3];//颜色
+                quint8 light = data[4];//亮度
+                quint8 vol = data[5];//音量
+                quint8 delay = data[6];//报警时间
+                QString signNum;//警示语标号
+                signNum += data[7];
+                signNum += data[8];
+                signNum += data[9];
+                QString imageNum;//图片编号
+                imageNum += data[10];
+                imageNum += data[11];
+                imageNum += data[12];
 
-            //显示异常
-            device->stafault = staFault;
-            //设置状态
-            device->stabyte = staBit;
-            device->signid = signNum;
-            device->imageidx = imageNum;
-            device->light = light;
-            device->vol = vol;
-            device->delay = delay;
-            device->color = color;
+                //显示异常
+                device->stafault = staFault;
+                //设置状态
+                device->stabyte = staBit;
+                device->signid = signNum;
+                device->imageidx = imageNum;
+                device->light = light;
+                device->vol = vol;
+                device->delay = delay;
+                device->color = color;
+            });
+            //名称、安装位置
+            sendMessage(device, 00, 72, data, [this](void* dev, quint8, const QByteArray &data){
+                TcpDevice* device = (TcpDevice*)dev;
+                if(data[0] != '0')
+                {
+                    emit message(WARNING, tr("警告"), "读取警示牌的名称和安装位置[72帧]失败");//发送 messagebox
+                    return ;
+                }
+                if(data.size() != 33)
+                {
+                    emit message(WARNING, tr("警告"), "读取警示牌的名称和安装位置[72帧]数据长度错误");//发送 messagebox
+                    return ;
+                }
+
+                QString name;
+                QString location;
+                int pos = 1;
+                //name
+                for(int i = 0; i < 16; i++)
+                    if(data[pos+i] != 0)
+                        name += data[pos+i];
+                pos += 16;
+                //location
+                for(int i = 0; i < 16; i++)
+                    if(data[pos+i] != 0)
+                        location += data[pos+i];
+
+                device->name = name;
+                device->location = location;
+            });
 
             emit message(INFORMATION, device->ip, QString("%1").arg(device->port), MESSAGE_CHANGE_STATUS, device);//发送消息 修改界面状态
+        }
 
-            //回调完成标志，在 sendMessage 中，如果有回调函数，则完成时一定要设置改标志位
-            callback_completion_flag = true;
-        });
-        disregisterCallback(01);
 
         idx++;
         if(idx > DeviceTab.size()-1)
@@ -347,7 +355,7 @@ void TcpServer::onServerNewConnection()
     emit message(INFORMATION, tr("提示"), QString("新的客户端连入:%1").arg(info));//发送 messagebox
     emit message(INFORMATION, tcp->peerAddress().toString(), QString::number(tcp->peerPort()), MESSAGE_NEWCONNECTION);//发送消息
 
-    tcp->setObjectName(info);       //设置名称
+    tcp->setObjectName(info);//设置名称
 
     connect(tcp, &QTcpSocket::connected, this, &TcpServer::onServerConnected);
     connect(tcp, &QTcpSocket::disconnected, this, &TcpServer::onServerDisconnected);
@@ -355,24 +363,25 @@ void TcpServer::onServerNewConnection()
     connect(tcp, static_cast<void (QTcpSocket:: *)(qint64)>(&QTcpSocket::bytesWritten),
             this, static_cast<void (TcpServer:: *)(qint64)>(&TcpServer::onServerBytesWritten));
 
-    //以下几条sendMessage命令不能使用TcpDevice*，此时该对象为空，还未建立
-    //第一条命令 获得id 填写id表
+    TcpDevice* tcpdev = new TcpDevice(info, "", "", (quint8)0);
     QByteArray data;
-    //获得名字
-    QString name;
-    QString location;
-    sendMessage(79, data, info, [&](TcpDevice*, quint8, const QByteArray &data){//阻塞函数
+    sendMessage(tcpdev, 00, 79, data, [this, &tcpdev](void* dev, quint8, const QByteArray &data){//注册回调函数
+        //此时TcpDevice还未建立，传入为QTcpSocket对象
+        QTcpSocket *tcp = (QTcpSocket *)dev;
+        QString info = tcp->peerAddress().toString() + ":" + QString("%1").arg(tcp->peerPort());
         if(data[0] != '0')
         {
-            QMessageBox::warning(mainWindow, tr("警告"), QString("设备处理警示牌信息[79帧]失败"));
+            emit message(WARNING, tr("警告"), "设备处理警示牌信息[79帧]失败");//发送 messagebox
             return ;
         }
         if(data.size() != 0x31)
         {
-            QMessageBox::warning(mainWindow, tr("警告"), QString("警示牌信息[79帧]数据长度错误"));
+            emit message(WARNING, tr("警告"), "警示牌信息[79帧]数据长度错误");//发送 messagebox
             return ;
         }
 
+        QString name;
+        QString location;
         QString id;
         QString password;
         int pos = 1;
@@ -403,89 +412,73 @@ void TcpServer::onServerNewConnection()
             emit message(WARNING, tr("警告"), "警示牌 "+signdev->name+" 和新警示牌 "+name+" id冲突("+id+")新警示牌不会添加");//发送 messagebox
             tcp->close();//主动关闭链接
         }else
+        {
             bindTable(info, id);//绑定
 
-        callback_completion_flag = true;//设置回调标志
+            tcpdev->id = id;
+            tcpdev->name = name;
+            DeviceTab[id] = tcpdev;
+            DeviceTab[id]->location = location;
+            DeviceTab[id]->ip = tcp->peerAddress().toString();
+            DeviceTab[id]->port = tcp->peerPort();
+        }
     });
-    disregisterCallback(79);
-//    sendMessage(74, data, info, [&](TcpDevice*, quint8, const QByteArray &data){//阻塞函数
-//        if(data[0] != '0')
-//        {
-//            QMessageBox::warning(mainWindow, tr("警告"), QString("设备处理id信号[74帧]失败"));
-//            return ;
-//        }
-//        if(data.size() != 33)
-//        {
-//            QMessageBox::warning(mainWindow, tr("警告"), QString("id信号[74帧]数据长度错误"));
-//            return ;
-//        }
 
-//        QString id;
-//        QString password;
-//        for(int i = 1; i < 17; i++)
-//            if(data[i] != 0)
-//                id += data[i];
-//        for(int i = 17; i < data.size(); i++)
-//            if(data[i] != 0)
-//                password += data[i];
+    sendMessage(tcpdev, 00, 01, data, [this](void* dev, quint8, const QByteArray &data){
+        TcpDevice* device = (TcpDevice*)dev;
+        if(data[0] != '0')
+        {
+            emit message(WARNING, tr("警告"), QString("设备处理状态信号[01帧]失败，故障信息：0x%1").arg(data[1], 2, 16, QLatin1Char('0')));//发送 messagebox
+            return ;
+        }
+        if(data.size() != 0x0d)
+        {
+            emit message(WARNING, tr("警告"), "状态信号[01帧]数据长度错误");//发送 messagebox
+            return ;
+        }
+        if(device == nullptr)
+        {
+            qDebug() << "device 为空";
+            return ;
+        }
 
-//        bindTable(info, id);//绑定
+        quint8 staFault = data[1];//异常状态
+        quint8 staBit = data[2];//状态字
+        quint8 color = data[3];//颜色
+        quint8 light = data[4];//亮度
+        quint8 vol = data[5];//音量
+        quint8 delay = data[6];//报警时间
+        QString signNum;//警示语标号
+        signNum += data[7];
+        signNum += data[8];
+        signNum += data[9];
+        QString imageNum;//图片编号
+        imageNum += data[10];
+        imageNum += data[11];
+        imageNum += data[12];
 
-//        callback_completion_flag = true;//设置回调标志
-//    });
-//    disregisterCallback(74);
-//    //获得名字
-//    QString name;
-//    QString location;
-//    sendMessage(72, data, info, [&](TcpDevice*, quint8, const QByteArray &data){//阻塞函数
-//        if(data[0] != '0')
-//        {
-//            QMessageBox::warning(mainWindow, tr("警告"), QString("设备处理id信号[72帧]失败"));
-//            return ;
-//        }
-
-//        for(int i = 1; i < 9; i++)
-//            if(data[i] != 0)
-//                name += data[i];
-//        for(int i = 9; i < data.size(); i++)
-//            if(data[i] != 0)
-//                location += data[i];
-
-//        callback_completion_flag = true;//设置回调标志
-//    });
-//    disregisterCallback(72);
-    //获得标示语
-//    QString sign;//读取标示语
-//    sendMessage(13, data+"000", info, [&](TcpDevice*, quint8, const QByteArray &data){//阻塞函数
-//        if(data[0] != '0')
-//        {
-//            QMessageBox::warning(mainWindow, tr("警告"), QString("设备处理id信号[13帧]失败"));
-//            return ;
-//        }
-//        sign = data;
-
-//        callback_completion_flag = true;//设置回调标志
-//    });
-//    disregisterCallback(13);
+        //显示异常
+        device->stafault = staFault;
+        //设置状态
+        device->stabyte = staBit;
+        device->signid = signNum;
+        device->imageidx = imageNum;
+        device->light = light;
+        device->vol = vol;
+        device->delay = delay;
+        device->color = color;
+    });
 
     //已经获取到设备的必要信息 发送添加设备
     QString id = findId(info);
     if(id != ERROR)
     {
-        DeviceTab[id] = new TcpDevice(info, id, name, (quint8)0);
-        DeviceTab[id]->location = location;
-    //    DeviceTab[id]->sign = sign;
-        DeviceTab[id]->ip = tcp->peerAddress().toString();
-        DeviceTab[id]->port = tcp->peerPort();
-
-
-
-        //立马执行超时函数 更新标识位
-        timeout();
         //激活定时器 周期性调用超时函数
-        HeartbeatTimer->start(timerInterval);
+        if(!HeartbeatTimer->isActive())
+            HeartbeatTimer->start(timerInterval);
 
         emit message(INFORMATION, tcp->peerAddress().toString(), QString::number(tcp->peerPort()), MESSAGE_ADDDEVICE, DeviceTab[id]);//发送消息
+        DeviceTab[id]->init = true;//初始化完成
     }
 }
 
@@ -502,14 +495,12 @@ void TcpServer::onServerDisconnected()
         qDebug() << "连接断开，ip：" << tcp->peerAddress().toString() << " 端口：" << tcp->peerPort();
         QString info=tcp->peerAddress().toString()+":"+QString("%1").arg(tcp->peerPort());
         emit message(INFORMATION, tr("提示"), QString("客户端断开连接:%1").arg(info));//发送 messagebox
-//        emit message(INFORMATION, tcp->peerAddress().toString(), QString::number(tcp->peerPort()), MESSAGE_DISCONNECTION);//发送消息
         emit message(INFORMATION, tcp->peerAddress().toString(), QString::number(tcp->peerPort()), MESSAGE_DISCONNECTION, findTcpDevice_ip(info));//发送消息
 
         QString id = Ip2IdTable[info];
         delete DeviceTab[id];//删除设备对象
         DeviceTab.remove(id);//设备表中移除键值对
         unbindTable(info, id);//解绑
-//        QMessageBox::information(this,"提示",QString("客户端断开连接:%1").arg(info),QMessageBox::Ok);
     }
 
     if(DeviceTab.empty())
@@ -524,9 +515,9 @@ void TcpServer::onServerDataReady()
     QTcpSocket* tcp = dynamic_cast<QTcpSocket*>(sender());
     QByteArray data = tcp->readAll();
 
-
-    qDebug() << "[接受来自"+ tcp->peerAddress().toString()+":"+QString::number(tcp->peerPort())+"]:";
-    qDebug() << QString::fromLocal8Bit(data) << " <==> " << byteArrayToHexString(data);
+    qDebug();
+    qDebug() << "server <== ["+ tcp->peerAddress().toString()+":"+QString::number(tcp->peerPort())+"]:";
+    qDebug() << QString::fromLocal8Bit(data) << " ---- " << byteArrayToHexString(data);
 
     //解码
     static Protocol protocol;
@@ -557,9 +548,17 @@ void TcpServer::onServerDataReady()
         //device为空时 出现在刚刚链接时 发送查询信号的过程中，此时这几个查询信号是不能用device的
         //所以下明只报警告 不退出该函数
         if(id == TcpServer::ERROR || device == nullptr)
-            qCritical() << "获取 TcpDevice* 错误 info:" << info << " id:" << id << "（在新链接建立时会出现两次该警告，此时设备对象还未建立，属于正常现象）";
+        {
+            qCritical() << "获取 TcpDevice* 错误 info:" << info << " id:" << id << "（在新链接建立时会出现一次该警告，此时设备对象还未建立，属于正常现象）";
+            CallbackTable[frame.type()](tcp, frame.addr(), frame.getData());
+        }else
+            CallbackTable[frame.type()](device, frame.addr(), frame.getData());
 
-        CallbackTable[frame.type()](device, frame.addr(), frame.getData());
+        //经过回调 TcpDevice 已经注册成功
+        id = findId(info);
+        device = findTcpDevice(id);
+        if(device != nullptr)
+            emit device->received();//发送接收完成信号 用于同步 sendMessage
     }
 
     emit recData(tcp, data);
@@ -577,7 +576,8 @@ void TcpServer::onServerDataReady()
 
 void TcpServer::onServerBytesWritten(qint64 bytes)
 {
-    qDebug() << "发送字符:" << bytes;
+    Q_UNUSED(bytes);
+//    qDebug() << "发送字符:" << bytes;
 //    ui->sendLenLabel->setText(QString("%1").arg(ui->sendLenLabel->text().toInt()+bytes));
 }
 

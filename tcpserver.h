@@ -22,8 +22,9 @@
 #define MESSAGE_CHANGE_STATUS       (4)
 
 //回调函数类型
-//typedef void(*callback_t)(quint8 addr, const QByteArray &data);
-#define callback_t      std::function<void (TcpDevice* device, quint8 addr, const QByteArray &data)>
+//device：TcpDevice*类型或者QTcpSocket*类型
+//      当TcpDevice*为空时，则传QTcpSocket*对象
+#define callback_t      std::function<void (void* device, quint8 addr, const QByteArray &data)>
 
 
 class TcpDevice : public QObject
@@ -48,6 +49,9 @@ public:
     {};
     ~TcpDevice(){};
 
+signals:
+    void received(void);
+
 public:
     QString info;
     QString ip;
@@ -63,14 +67,7 @@ public:
     quint8 delay;//提示延时
     quint8 color;//显示颜色
 
-
-    int heartbeat = 0;
-    //是否应该发送心跳信号
-    bool isSendHeartbeat();
-    //心跳信号
-//    void heartbeat();
-
-
+    bool init = false;//初始化状态
 
     //状态字
     union{
@@ -142,23 +139,26 @@ public:
 
 
     //注意：仅仅在没有type类型的回调函数时才能注册成功
-    bool registerCallback(quint8 type, callback_t func = [](TcpDevice*, quint8, const QByteArray &){});
+    bool registerCallback(quint8 type, callback_t func = [](void*, quint8, const QByteArray &){});
     bool disregisterCallback(quint8 type);
 
     //非阻塞发送
     int sendMessage_noblock(quint8 addr, quint8 type, const QByteArray& data, const QString& objectName);
 
-    //阻塞式发送 不可重入
+    //阻塞式发送
     //注意：该函数中的func参数仅限临时使用，所以该函数仅限于发送并接收响应一次。
     //      如需要主动接收下位机信号请调用 registerCallback 或 sendMessageDaemon
-    //返回值：
-    //0：正常
-    //-1：发送失败
-    //-2：超时
-    //-3：重入
-    int sendMessage(quint8 addr, quint8 type, const QByteArray& data, const QString& objectName, callback_t func = nullptr, int timeover = REC_TIMEOUT);
-    int sendMessage(quint8 type, const QByteArray& data, const QString& objectName, callback_t func = nullptr, int timeover = REC_TIMEOUT)
-                    {return sendMessage(0, type, data, objectName, func, timeover);};
+    void sendMessage(TcpDevice* tcpdev, quint8 addr, quint8 type, const QByteArray &data, callback_t func = nullptr, int timeover = REC_TIMEOUT);
+    //注意：该函数只能在79号命令之后才能使用（79命令获得id）
+    void sendMessage(const QString& id, quint8 addr, quint8 type, const QByteArray &data, callback_t func = nullptr, int timeover = REC_TIMEOUT)
+    {
+        TcpDevice* tcpdev = findTcpDevice(id);
+        sendMessage(tcpdev, addr, type, data, func, timeover);
+    };
+
+
+
+
 
     //发送数据并注册守护服务（允许下位机主动上报）
     //注意：func如果使用匿名函数需要小心使用临时变量
@@ -172,9 +172,6 @@ public:
     };
     bool sendMessageDaemon(quint8 type, const QByteArray& data, const QString& objectName, callback_t func)
                             {return sendMessageDaemon(0, type, data, objectName, func);};
-
-    //回调完成标志，在 sendMessage 中，如果有回调函数，则完成时一定要设置改标志位
-    bool callback_completion_flag = false;
 
     //错误字符串
     static QString ERROR;
@@ -255,7 +252,10 @@ private:
     quint16 timerInterval = 5000;//ms 每个节点之间的时间间隔
 
 private slots:
+//    void timeout(bool isinit = false);
     void timeout();
+//    void timeout(bool isinit);
+//    void timeout(){timeout(false);};
     void onServerNewConnection();
     void onServerConnected();
     void onServerDisconnected();

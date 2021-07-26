@@ -41,9 +41,9 @@ void QFormDebugCmd::on_pushButton_set_Voice_clicked()
     data += ui->horizontalSlider_Voice->value() + '0';
     //发送消息 并 注册回调函数
     TcpServer& server = TcpServer::getHandle();
-    server.sendMessage(02, data, objName);
+//    server.sendMessage(02, data, objName);
     //发送完关闭即销毁 防止该界面关闭后仍回调
-    server.disregisterCallback(02);
+//    server.disregisterCallback(02);
 }
 
 //设置亮度
@@ -62,8 +62,8 @@ void QFormDebugCmd::on_pushButton_set_Lightness_clicked()
     data += QString("%1").arg(ui->horizontalSlider_Lightness->value(), 2, 10, QLatin1Char('0')).toLocal8Bit();
     //发送消息 并 注册回调函数
     TcpServer& server = TcpServer::getHandle();
-    server.sendMessage(05, data, objName);
+//    server.sendMessage(05, data, objName);
     //发送完关闭即销毁 防止该界面关闭后仍回调
-    server.disregisterCallback(05);
+//    server.disregisterCallback(05);
 }
 

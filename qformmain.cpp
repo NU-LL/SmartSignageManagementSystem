@@ -441,6 +441,7 @@ void QFormMain::recMessage(int level, QString title, QString text, int message_i
             *signdev = *tcpdev;//更新数据
             signdev->offline = 0;//在线
             refreshSignDev(signdev);
+            qDebug() << "改变状态" << signdev->id << " : " << signdev->name << " : " << signdev->senderName;
 
 
 //            //更新所有状态
@@ -469,11 +470,13 @@ void QFormMain::recMessage(int level, QString title, QString text, int message_i
                 msgBox->show();
 
                 addDevice(signdev);
+                qDebug() << "添加新设备" << signdev->id << " : " << signdev->name << " : " << signdev->senderName;
             }else//老设备上线
             {
                 *signdev = *tcpdev;//更新数据
                 signdev->offline = 0;//在线
                 refreshSignDev(signdev);
+                qDebug() << "更新设备" << signdev->id << " : " << signdev->name << " : " << signdev->senderName;
             }
 //            //插入一行
 //            QString sign;
@@ -1138,14 +1141,22 @@ void QFormMain::on_tableView_doubleClicked(const QModelIndex &index)
             data += tcpdev->delay;//报警时间
             data += QString("%1").arg(sign->id, 3, QLatin1Char('0')).toLocal8Bit();//提示语编号
             data += "000";//图片编号
-            server.sendMessage(02, data, signdev->senderName);//发送状态信息
+            server.sendMessage(signdev->id, 00, 02, data);//发送状态信息
             data.clear();
+
+            if(res[2])//修改名称
+            {
+                data += QString("%1").arg(signdev->name, -16, QLatin1Char(0)).toLocal8Bit();//名称
+                data += QString("%1").arg("", -16, QLatin1Char(0)).toLocal8Bit();//安装位置
+                server.sendMessage(signdev->id, 00, 71, data);//发送警示语文本信息
+                data.clear();
+            }
 
             if(res[3])//只有当警示语变更时才发送文本信息
             {
                 data += QString("%1").arg(sign->id, 3, QLatin1Char('0')).toLocal8Bit();//提示语编号
                 data += sign->text.toLocal8Bit();//警示语内容
-                server.sendMessage(12, data, signdev->senderName);//发送警示语文本信息
+                server.sendMessage(signdev->id, 00, 12, data);//发送警示语文本信息
                 data.clear();
             }
         }

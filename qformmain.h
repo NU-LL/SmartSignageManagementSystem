@@ -47,6 +47,8 @@ public:
         this->id = tcpdev.id;
         this->name = tcpdev.name;
         this->signid = tcpdev.signid;
+        this->stabyte = tcpdev.stabyte;
+        this->stafault = tcpdev.stafault;
         return *this;
     };
 
