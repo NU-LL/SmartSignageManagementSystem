@@ -167,12 +167,14 @@ QDialogAddDev::QDialogAddDev(QWidget *parent) :
     }
     //设置警示语列表切换时颜色也跟着改变
     Sign* sign = ui->comboBox_Sign->currentData().value<Sign*>();
-    ui->comboBox_Sign->setStyleSheet(QString("QComboBox{color:%1;}").arg(sign->getStrColor()));
+    if(sign != nullptr)
+        ui->comboBox_Sign->setStyleSheet(QString("QComboBox{color:%1;}").arg(sign->getStrColor()));
     connect(ui->comboBox_Sign, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int index){
         //先获取信号的发送者
         QComboBox *cmb = qobject_cast<QComboBox *>(sender());
         Sign* sign = cmb->itemData(index).value<Sign*>();
-        cmb->setStyleSheet(QString("QComboBox{color:%1;}").arg(sign->getStrColor()));
+        if(sign != nullptr)
+            cmb->setStyleSheet(QString("QComboBox{color:%1;}").arg(sign->getStrColor()));
     });
 
 //    Sign::getSignTable()
@@ -218,9 +220,10 @@ const QString QDialogAddDev::getDeviceIp()
 
 const QString QDialogAddDev::getDeviceId()
 {
-    if(ui->label_DeviceId->text() == TcpServer::ERROR)//设备id错误
-        return QString("");
-    return ui->label_DeviceId->text();
+//    if(ui->label_DeviceId->text() == TcpServer::ERROR)//设备id错误
+//        return QString("");
+//    return ui->label_DeviceId->text();
+    return ui->lineEdit_DeviceId->text();
 }
 
 const QString QDialogAddDev::getSignText()

@@ -1014,7 +1014,8 @@ void QFormMain::on_pushButton_AddDevice_clicked()
     {
         if(dlgAddDev->getDeviceId().isEmpty())
         {
-            QMessageBox::warning(this, "警告", "添加失败（id为空），请连接设备");
+//            QMessageBox::warning(this, "警告", "添加失败（id为空），请连接设备");
+            QMessageBox::warning(this, "警告", "添加失败（id为空），请输入id");
             delete dlgAddDev;
             return ;
         }

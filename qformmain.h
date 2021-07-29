@@ -267,6 +267,11 @@ public:
 
     void addDevice(SignDevice* signdev)
     {
+        if(SignDevice::findSignDev(signdev->id) != nullptr)
+        {
+            QMessageBox::warning(this, "警告", "插入失败，请确保id唯一");
+            return;
+        }
         signdev->item = addLine(signdev);
 //        signdev->item = addLine(signdev->id, signdev->groupname, signdev->name, signdev->signid, signdev->voice==1, signdev->flash==1, signdev->alert==1);
         SignDevice::registerSignDev(signdev->id, signdev);
