@@ -915,7 +915,7 @@ QBitArray QFormMain::refreshSignDev(SignDevice *signdev)
     }else
         sta = "无异常";
     res[8] = modifyCell(signdev->item->row(), 8, sta);
-    if(res[8])//如果修改了 则需要提醒
+    if(res[8] && signdev->stafault)//如果修改了 且 无异常 则需要提醒
     {
         QMessageBox* msgBox = new QMessageBox(QMessageBox::Warning, "警告", signdev->name+":"+sta, QMessageBox::Ok, this);
         msgBox->setAttribute( Qt::WA_DeleteOnClose ); //makes sure the msgbox is deleted automatically when closed
