@@ -15,7 +15,12 @@
 #define DEFAULT_PORT            (23350)
 
 //应答信号超时时间 ms
+#ifdef QT_NO_DEBUG//release
 #define REC_TIMEOUT             (1000)
+#else
+#define REC_TIMEOUT             (5000)
+#endif
+
 
 
 #endif // CONFIG_H

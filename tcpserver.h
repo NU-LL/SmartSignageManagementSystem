@@ -98,11 +98,21 @@ private:
 };
 
 
-
+////QTcpSocket 中带的用户数据
+//struct TcpDevicePoint : QObjectUserData {
+//    explicit TcpDevicePoint(TcpDevice* tcpdev):tcpdev(tcpdev){};
+//    TcpDevice* tcpdev = nullptr;  //指向TcpDevice的指针
+//};
 
 class TcpServer : public QObject
 {
     Q_OBJECT
+
+
+
+//    friend void cmd_79_callback(void* device, quint8 addr, const QByteArray &data);
+
+
 public:
     //单例模式
     //注意：该函数线程不安全（C++构造函数本身就是线程不安全）
@@ -139,6 +149,7 @@ public:
 
 
     //注意：仅仅在没有type类型的回调函数时才能注册成功
+    //回调函数最好别用匿名函数，如果使用 匿名函数中最好别用栈空间的临时变量且记得用完后注销
     bool registerCallback(quint8 type, callback_t func = [](void*, quint8, const QByteArray &){});
     bool disregisterCallback(quint8 type);
 
@@ -211,6 +222,12 @@ public:
             return iter.value();
         return ERROR;
     }
+private:
+    static void cmd_72_callback(void *dev, quint8 addr, const QByteArray &data);
+    static void cmd_79_callback(void *dev, quint8 addr, const QByteArray &data);
+    static void cmd_01_callback(void *dev, quint8 addr, const QByteArray &data);
+
+
 
 signals:
     //level：QMessageBox级别

@@ -26,16 +26,19 @@ void outputMessageHandler(QtMsgType type, const QMessageLogContext &context, con
     switch(type)
     {
     case QtDebugMsg:
-        strMsg = QString("Debug");
+        strMsg = QString("  Debug ");
         break;
     case QtWarningMsg:
-        strMsg = QString("Warning");
+        strMsg = QString(" Warning");
         break;
     case QtCriticalMsg:
         strMsg = QString("Critical");
         break;
     case QtFatalMsg:
-        strMsg = QString("Fatal");
+        strMsg = QString("  Fatal ");
+        break;
+    case QtInfoMsg:
+        strMsg = QString("  Info  ");
         break;
     }
 
@@ -43,10 +46,15 @@ void outputMessageHandler(QtMsgType type, const QMessageLogContext &context, con
     QString strDateTime = QDateTime::currentDateTime().toString("hh:mm:ss");
 #ifdef QT_NO_DEBUG//release
     QString strMessage = QString("[%1] [%2] : %3")
-                .arg(strMsg).arg(strDateTime).arg(msg);
+                .arg(strMsg, 8).arg(strDateTime, 8).arg(msg);
 #else
-    QString strMessage = QString("[%1] [%2] : %3\t\t\t[%4||line:%5||%6]")
-            .arg(strMsg).arg(strDateTime).arg(msg).arg(QFileInfo(context.file).fileName()).arg(context.line).arg(context.function);
+    QString strMessage = QString("[%1||line:%2||%3] [%4] [%5] : %6")
+            .arg(QFileInfo(context.file).fileName(), 15)
+            .arg(context.line, 5)
+            .arg(QString(context.function).left(40), 40)
+            .arg(strMsg, 8)
+            .arg(strDateTime, 8)
+            .arg(msg);
 #endif
     // 检查并创建目录
     QDir *tempdir = new QDir;
