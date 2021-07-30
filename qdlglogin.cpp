@@ -7,6 +7,7 @@
 #include <QDir>
 
 #include "config.h"
+#include "qformoptions.h"
 
 QDlgLogin::QDlgLogin(QWidget *parent) :
     QDialog(parent),
@@ -41,7 +42,7 @@ void QDlgLogin::readSettings()
 //    QString organization="ICELAB";//用于注册表，regedit
 //    QString appName="SmartSignageManagementSystem"; //HKEY_CURRENT_USER/Software/ICELAB/SmartSignageManagementSystem
 //    QSettings settings(organization,appName);//创建
-    QSettings settings(QDir(DEFAULT_PROFILE_PATH).absoluteFilePath(DEFAULT_PROFILE_NAME), QSettings::IniFormat);//创建
+    QSettings settings(QDir(QFormOptions::ConfigFilePath).absoluteFilePath(DEFAULT_PROFILE_NAME), QSettings::IniFormat);//创建
 
     bool saved=settings.value("saved",false).toBool();//读取 saved键的值
     m_user=settings.value("Username", m_user).toString();//读取 Username 键的值，缺省为“user”
@@ -58,7 +59,7 @@ void QDlgLogin::writeSettings()
 //    QString organization="ICELAB";//用于注册表，regedit
 //    QString appName="SmartSignageManagementSystem"; //HKEY_CURRENT_USER/Software/ICELAB/SmartSignageManagementSystem
 //    QSettings settings(organization,appName);//创建
-    QSettings settings(QDir(DEFAULT_PROFILE_PATH).absoluteFilePath(DEFAULT_PROFILE_NAME), QSettings::IniFormat);//创建
+    QSettings settings(QDir(QFormOptions::ConfigFilePath).absoluteFilePath(DEFAULT_PROFILE_NAME), QSettings::IniFormat);//创建
 
     settings.setValue("Username",m_user); //用户名
     settings.setValue("PSWD",m_pswd);   //密码，经过加密的

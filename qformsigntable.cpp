@@ -62,7 +62,7 @@ void Sign::Init()
 
 
     //json文件存储
-    QFile loadFile(QDir(DEFAULT_PROFILE_PATH).absoluteFilePath("signtable.json"));
+    QFile loadFile(QDir(QFormOptions::ConfigFilePath).absoluteFilePath("signtable.json"));
     if(!loadFile.exists())
     {
         loadFile.open(QIODevice::WriteOnly);
@@ -95,7 +95,7 @@ void Sign::Init()
 bool Sign::save()
 {
     //json文件存储（注意，会清空）
-    QFile saveFile(QDir(DEFAULT_PROFILE_PATH).absoluteFilePath("signtable.json"));
+    QFile saveFile(QDir(QFormOptions::ConfigFilePath).absoluteFilePath("signtable.json"));
     if (!saveFile.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate))
     {
         qWarning("Couldn't open save file : signtable.json.");

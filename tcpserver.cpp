@@ -143,10 +143,10 @@ int TcpServer::sendMessage_noblock(quint8 addr, quint8 type, const QByteArray& d
 
 
 //阻塞式发送
-void TcpServer::sendMessage(TcpDevice* tcpdev, quint8 addr, quint8 type, const QByteArray &data, callback_t func, int timeover)
+int TcpServer::sendMessage(TcpDevice* tcpdev, quint8 addr, quint8 type, const QByteArray &data, callback_t func, int timeover)
 {
     if(tcpdev == nullptr)
-        return ;
+        return -1;
     QTimer t;
     QEventLoop loop;//创建事件循环
     t.setSingleShot(true);
@@ -169,6 +169,11 @@ void TcpServer::sendMessage(TcpDevice* tcpdev, quint8 addr, quint8 type, const Q
 
     loop.exec();//事件循环开始，阻塞，直到定时时间到或收到received信号
     disregisterCallback(type);//主动删除回调函数
+    if (t.isActive())
+        t.stop();
+    else//超时
+        return 0;
+    return 1;
 }
 
 
@@ -365,7 +370,9 @@ void TcpServer::onServerNewConnection()
 
     TcpDevice* tcpdev = new TcpDevice(info, "", "", (quint8)0);
     QByteArray data;
-    sendMessage(tcpdev, 00, 79, data, [this, &tcpdev](void* dev, quint8, const QByteArray &data){//注册回调函数
+    int timeover = REC_TIMEOUT;
+    //超时重发
+    while(0 == sendMessage(tcpdev, 00, 79, data, [this, &tcpdev](void* dev, quint8, const QByteArray &data){//注册回调函数
         //此时TcpDevice还未建立，传入为QTcpSocket对象
         QTcpSocket *tcp = (QTcpSocket *)dev;
         QString info = tcp->peerAddress().toString() + ":" + QString("%1").arg(tcp->peerPort());
@@ -422,9 +429,11 @@ void TcpServer::onServerNewConnection()
             DeviceTab[id]->ip = tcp->peerAddress().toString();
             DeviceTab[id]->port = tcp->peerPort();
         }
-    });
+    }, timeover)){timeover = (timeover>=timerInterval/2)?(timerInterval/2):(timeover*2);};
 
-    sendMessage(tcpdev, 00, 01, data, [this](void* dev, quint8, const QByteArray &data){
+    timeover = REC_TIMEOUT;
+    //超时重发
+    while(0 == sendMessage(tcpdev, 00, 01, data, [this](void* dev, quint8, const QByteArray &data){
         TcpDevice* device = (TcpDevice*)dev;
         if(data[0] != '0')
         {
@@ -467,7 +476,7 @@ void TcpServer::onServerNewConnection()
         device->vol = vol;
         device->delay = delay;
         device->color = color;
-    });
+    }, timeover)){timeover = (timeover>=timerInterval/2)?(timerInterval/2):(timeover*2);};
 
     //已经获取到设备的必要信息 发送添加设备
     QString id = findId(info);
@@ -501,6 +510,7 @@ void TcpServer::onServerDisconnected()
         delete DeviceTab[id];//删除设备对象
         DeviceTab.remove(id);//设备表中移除键值对
         unbindTable(info, id);//解绑
+        tcp->deleteLater();//直接删除该tcp对象
     }
 
     if(DeviceTab.empty())

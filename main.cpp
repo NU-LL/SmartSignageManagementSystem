@@ -77,7 +77,7 @@ int main(int argc, char *argv[])
 {
     // 安装消息处理程序
     qInstallMessageHandler(outputMessageHandler);
-    qDebug() << "================================new program begin你好=================================";//日志中换行 便于观察
+    qDebug() << "================================new program begin=================================";//日志中换行 便于观察
 
     QApplication a(argc, argv);
 

@@ -139,7 +139,7 @@ void SignDevice::Init()
 //    }
 
     //json文件存储
-    QFile loadFile(QDir(DEFAULT_PROFILE_PATH).absoluteFilePath("table.json"));
+    QFile loadFile(QDir(QFormOptions::ConfigFilePath).absoluteFilePath("table.json"));
     if(!loadFile.exists())
     {
         loadFile.open(QIODevice::WriteOnly);
@@ -172,7 +172,7 @@ void SignDevice::Init()
 bool SignDevice::save()
 {
     //json文件存储（注意，会清空）
-    QFile saveFile(QDir(DEFAULT_PROFILE_PATH).absoluteFilePath("table.json"));
+    QFile saveFile(QDir(QFormOptions::ConfigFilePath).absoluteFilePath("table.json"));
     if (!saveFile.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate))
     {
         qWarning("Couldn't open save file : table.json.");
@@ -1149,7 +1149,7 @@ void QFormMain::on_tableView_doubleClicked(const QModelIndex &index)
             {
                 data += QString("%1").arg(signdev->name, -16, QLatin1Char(0)).toLocal8Bit();//名称
                 data += QString("%1").arg("", -16, QLatin1Char(0)).toLocal8Bit();//安装位置
-                server.sendMessage(signdev->id, 00, 71, data);//发送警示语文本信息
+                server.sendMessage(signdev->id, 00, 71, data);//发送警示牌名称
                 data.clear();
             }
 

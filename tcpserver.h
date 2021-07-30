@@ -148,12 +148,16 @@ public:
     //阻塞式发送
     //注意：该函数中的func参数仅限临时使用，所以该函数仅限于发送并接收响应一次。
     //      如需要主动接收下位机信号请调用 registerCallback 或 sendMessageDaemon
-    void sendMessage(TcpDevice* tcpdev, quint8 addr, quint8 type, const QByteArray &data, callback_t func = nullptr, int timeover = REC_TIMEOUT);
+    //返回值：
+    //      -1：输入无效
+    //      0：超时
+    //      1：正常
+    int sendMessage(TcpDevice* tcpdev, quint8 addr, quint8 type, const QByteArray &data, callback_t func = nullptr, int timeover = REC_TIMEOUT);
     //注意：该函数只能在79号命令之后才能使用（79命令获得id）
-    void sendMessage(const QString& id, quint8 addr, quint8 type, const QByteArray &data, callback_t func = nullptr, int timeover = REC_TIMEOUT)
+    int sendMessage(const QString& id, quint8 addr, quint8 type, const QByteArray &data, callback_t func = nullptr, int timeover = REC_TIMEOUT)
     {
         TcpDevice* tcpdev = findTcpDevice(id);
-        sendMessage(tcpdev, addr, type, data, func, timeover);
+        return sendMessage(tcpdev, addr, type, data, func, timeover);
     };
 
 
@@ -249,7 +253,7 @@ private:
 
     //周期定时器 心跳状态包
     QTimer *HeartbeatTimer = nullptr;
-    quint16 timerInterval = 5000;//ms 每个节点之间的时间间隔
+    quint16 timerInterval = 10000;//ms 每个节点之间的时间间隔
 
 private slots:
 //    void timeout(bool isinit = false);

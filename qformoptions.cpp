@@ -28,7 +28,7 @@ void QFormOptions::Init()
         return ;
 
     //json文件存储
-    QFile loadFile(QDir(DEFAULT_PROFILE_PATH).absoluteFilePath("options.json"));
+    QFile loadFile(QDir(QFormOptions::ConfigFilePath).absoluteFilePath("options.json"));
     if(!loadFile.exists())
     {
         loadFile.open(QIODevice::WriteOnly);
@@ -58,7 +58,7 @@ void QFormOptions::Init()
 bool QFormOptions::save()
 {
     //json文件存储（注意，会清空）
-    QFile saveFile(QDir(DEFAULT_PROFILE_PATH).absoluteFilePath("options.json"));
+    QFile saveFile(QDir(QFormOptions::ConfigFilePath).absoluteFilePath("options.json"));
     if (!saveFile.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate))
     {
         qWarning("Couldn't open save file : options.json.");
