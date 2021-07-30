@@ -78,8 +78,6 @@ int main(int argc, char *argv[])
     // 安装消息处理程序
     qInstallMessageHandler(outputMessageHandler);
     qDebug() << "================================new program begin你好=================================";//日志中换行 便于观察
-    qDebug() << "你好006";
-    qDebug() << QString("第")+4+"项有改动";
 
     QApplication a(argc, argv);
 
