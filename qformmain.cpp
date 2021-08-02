@@ -464,10 +464,7 @@ void QFormMain::recMessage(int type, void* message)
                 SignDevice* signdev = new SignDevice(*tcpdev);
                 signdev->offline = 0;//在线
                 //提醒用户 新设备上线
-                QMessageBox* msgBox = new QMessageBox(QMessageBox::Information, "通知", "新设备："+signdev->name+" 上线", QMessageBox::Ok, this);
-                msgBox->setAttribute( Qt::WA_DeleteOnClose ); //makes sure the msgbox is deleted automatically when closed
-                msgBox->setModal( false ); // if you want it non-modal
-                msgBox->show();
+                MainWindow::showMessageBox(QMessageBox::Information, "通知", "新设备："+signdev->name+" 上线", 2000);
 
                 addDevice(signdev);
                 qDebug() << "添加新设备" << signdev->id << " : " << signdev->name << " : " << signdev->senderName;
@@ -709,10 +706,7 @@ QStandardItem *QFormMain::addLine(const SignDevice *signdev)
             sta += "电池电量过低 ";
         if(signdev->fault.manual_configuration)
             sta += "红外遥控手动配置中 ";
-        QMessageBox* msgBox = new QMessageBox(QMessageBox::Warning, "警告", signdev->name+":"+sta, QMessageBox::Ok, this);
-        msgBox->setAttribute( Qt::WA_DeleteOnClose ); //makes sure the msgbox is deleted automatically when closed
-        msgBox->setModal( false ); // if you want it non-modal
-        msgBox->show();
+        MainWindow::showMessageBox(QMessageBox::Warning, "警告", signdev->name+":"+sta, 2000);
     }else
         sta = "无异常";
     aItem=new QStandardItem(sta);
@@ -915,12 +909,9 @@ QBitArray QFormMain::refreshSignDev(SignDevice *signdev)
     }else
         sta = "无异常";
     res[8] = modifyCell(signdev->item->row(), 8, sta);
-    if(res[8] && signdev->stafault)//如果修改了 且 无异常 则需要提醒
+    if(res[8] && signdev->stafault)//如果修改了 且 有异常 则需要提醒
     {
-        QMessageBox* msgBox = new QMessageBox(QMessageBox::Warning, "警告", signdev->name+":"+sta, QMessageBox::Ok, this);
-        msgBox->setAttribute( Qt::WA_DeleteOnClose ); //makes sure the msgbox is deleted automatically when closed
-        msgBox->setModal( false ); // if you want it non-modal
-        msgBox->show();
+        MainWindow::showMessageBox(QMessageBox::Warning, "警告", signdev->name+":"+sta, 2000);
     }
 
 //    res[4] = modifyCell(signdev->item->row(), 4, signdev->offline==1?"离线":"在线", );
