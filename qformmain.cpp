@@ -397,8 +397,8 @@ QFormMain::QFormMain(QWidget *parent) :
     //tcp server
     TcpServer& server = TcpServer::getHandle();
     //连接tcp信号槽
-    connect(&server, static_cast<void (TcpServer:: *)(int, QString, QString, int, void*)>(&TcpServer::message),
-            this, static_cast<void (QFormMain:: *)(int, QString, QString, int, void*)>(&QFormMain::recMessage));
+    connect(&server, static_cast<void (TcpServer:: *)(int, void*)>(&TcpServer::message),
+            this, static_cast<void (QFormMain:: *)(int, void*)>(&QFormMain::recMessage));
 
     //安装过滤器 捕获搜索快捷键
     installEventFilter(this);
@@ -412,22 +412,22 @@ QFormMain::~QFormMain()
 
 
 //消息接收槽函数
-void QFormMain::recMessage(int level, QString title, QString text, int message_id, void* message)
+void QFormMain::recMessage(int type, void* message)
 {
-    if(message_id == MESSAGE_BOX)//否则下面对map的操作会有干扰，插入新的元素进入
-        return ;
+//    if(message_id == MESSAGE_BOX)//否则下面对map的操作会有干扰，插入新的元素进入
+//        return ;
 
-    TcpServer& server = TcpServer::getHandle();
-    QString info = title + ":" + text;
-    QString id = server.findId(info);
-    TcpDevice* device = server.findTcpDevice(id);
+//    TcpServer& server = TcpServer::getHandle();
+//    QString info = title + ":" + text;
+//    QString id = server.findId(info);
+//    TcpDevice* device = server.findTcpDevice(id);
 
-    //数据有效性检查
-    if(id == TcpServer::ERROR || device == nullptr)
-        return ;
+//    //数据有效性检查
+//    if(id == TcpServer::ERROR || device == nullptr)
+//        return ;
 
 
-    switch(message_id)
+    switch(type)
     {
         case(MESSAGE_CHANGE_STATUS):
         {

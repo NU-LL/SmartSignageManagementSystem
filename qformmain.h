@@ -309,7 +309,7 @@ private:
 
 
 public slots:
-    void recMessage(int level, QString title, QString text, int message_id = MESSAGE_BOX, void* message = nullptr);//消息接收槽函数
+    void recMessage(int type, void* message = nullptr);//消息接收槽函数
 
 private slots:
     void on_pushButton_AddDevice_clicked();

@@ -40,8 +40,8 @@ QFormDebug::QFormDebug(QWidget *parent) :
 //        ui->label_DeviceId->setText(server.Ip2IdTable[ip]);
     ui->label_DeviceId->setText(server.findId(ip));
     //连接信号槽
-    connect(&server, static_cast<void (TcpServer:: *)(int, QString, QString, int, void*)>(&TcpServer::message),
-            this, static_cast<void (QFormDebug:: *)(int, QString, QString, int, void*)>(&QFormDebug::recMessage));
+    connect(&server, static_cast<void (TcpServer:: *)(int, void*)>(&TcpServer::message),
+            this, static_cast<void (QFormDebug:: *)(int, void*)>(&QFormDebug::recMessage));
     connect(&server, static_cast<void (TcpServer:: *)(QTcpSocket *, const QByteArray& data)>(&TcpServer::recData),
             this, static_cast<void (QFormDebug:: *)(QTcpSocket *, const QByteArray& data)>(&QFormDebug::recData));
 }
@@ -52,37 +52,33 @@ QFormDebug::~QFormDebug()
     TcpServer& server = TcpServer::getHandle();
     disconnect(&server, static_cast<void (TcpServer:: *)(QTcpSocket *, const QByteArray& data)>(&TcpServer::recData),
                this, static_cast<void (QFormDebug:: *)(QTcpSocket *, const QByteArray& data)>(&QFormDebug::recData));
-    disconnect(&server, static_cast<void (TcpServer:: *)(int, QString, QString, int, void*)>(&TcpServer::message),
-               this, static_cast<void (QFormDebug:: *)(int, QString, QString, int, void*)>(&QFormDebug::recMessage));
+    disconnect(&server, static_cast<void (TcpServer:: *)(int, void*)>(&TcpServer::message),
+               this, static_cast<void (QFormDebug:: *)(int, void*)>(&QFormDebug::recMessage));
     delete ui;
 }
 
 //消息接收槽函数
 //level：QMessageBox级别
 //      3,2,1,0<==>critical,warning,information,question
-void QFormDebug::recMessage(int , QString title, QString text, int message_id, void* message)
+void QFormDebug::recMessage(int type, void* message)
 {
-    QString& ip = title;
-    QString& port = text;
-    switch(message_id)
+    switch(type)
     {
-        case(MESSAGE_BOX):
-        {
-            break;
-        }
         case(MESSAGE_NEWCONNECTION):
         {
-            TcpServer& server = TcpServer::getHandle();
+            //刚刚链接时 没有建立TcpDevice对象 所以只能传info
+            //此时label_DeviceId必定设置不了
+            const QString info = *(const QString*)message;
 
-            ui->comboBox_DeviceInfo->addItem(ip+':'+port);
-//            if(server.Ip2IdTable.find(ip) != server.Ip2IdTable.end())
-//                ui->label_DeviceId->setText(server.Ip2IdTable[ip]);
-            ui->label_DeviceId->setText(server.findId(ip));
+            ui->comboBox_DeviceInfo->addItem(info);
+//            TcpServer& server = TcpServer::getHandle();
+//            ui->label_DeviceId->setText(server.findId(ip));
             break;
         }
         case(MESSAGE_DISCONNECTION):
         {
-            int idx = ui->comboBox_DeviceInfo->findText(ip+':'+port);
+            TcpDevice* tcpdev = static_cast<TcpDevice*>(message);
+            int idx = ui->comboBox_DeviceInfo->findText(tcpdev->info);
             ui->comboBox_DeviceInfo->removeItem(idx);//如果idx无效什么也不会做
             break;
         }

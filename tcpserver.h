@@ -9,13 +9,13 @@
 #include "config.h"
 
 
-#define QUESTION        (0)
-#define INFORMATION     (1)
-#define WARNING         (2)
-#define CRITICAL        (3)
+//#define QUESTION        (0)
+//#define INFORMATION     (1)
+//#define WARNING         (2)
+//#define CRITICAL        (3)
 
 
-#define MESSAGE_BOX                 (0)
+//#define MESSAGE_BOX                 (0)
 #define MESSAGE_NEWCONNECTION       (1)
 #define MESSAGE_DISCONNECTION       (2)
 #define MESSAGE_ADDDEVICE           (3)
@@ -230,14 +230,10 @@ private:
 
 
 signals:
-    //level：QMessageBox级别
-    //      3,2,1,0<==>critical,warning,information,question
-    //title：QMessageBox标题
-    //text：QMessageBox内容
-    //message_id:消息类型
+    //type:消息类型
     //message:消息内容 特定的消息类型才会用到
     //
-    void message(int level, QString title, QString text, int message_id = MESSAGE_BOX, void* message = nullptr);//过程中的一些提醒，一般用于 QMessageBox 打印
+    void message(int type, void* message = nullptr);//向界面发送信息，通过type区分不同信息
     void recData(QTcpSocket *tcp, const QByteArray& data);//接收到消息后，会通过改信号将消息发送出去
 
 private:
