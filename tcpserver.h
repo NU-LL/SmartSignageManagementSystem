@@ -230,9 +230,9 @@ private:
 
 
 signals:
+    //仅仅用于向界面发送必要的消息
     //type:消息类型
     //message:消息内容 特定的消息类型才会用到
-    //
     void message(int type, void* message = nullptr);//向界面发送信息，通过type区分不同信息
     void recData(QTcpSocket *tcp, const QByteArray& data);//接收到消息后，会通过改信号将消息发送出去
 
