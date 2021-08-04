@@ -414,18 +414,8 @@ QFormMain::~QFormMain()
 //消息接收槽函数
 void QFormMain::recMessage(int type, void* message)
 {
-//    if(message_id == MESSAGE_BOX)//否则下面对map的操作会有干扰，插入新的元素进入
-//        return ;
-
-//    TcpServer& server = TcpServer::getHandle();
-//    QString info = title + ":" + text;
-//    QString id = server.findId(info);
-//    TcpDevice* device = server.findTcpDevice(id);
-
-//    //数据有效性检查
-//    if(id == TcpServer::ERROR || device == nullptr)
-//        return ;
-
+    if(message == nullptr)
+        return;
 
     switch(type)
     {
@@ -442,16 +432,6 @@ void QFormMain::recMessage(int type, void* message)
             signdev->offline = 0;//在线
             refreshSignDev(signdev);
             qDebug() << "改变状态" << signdev->id << " : " << signdev->name << " : " << signdev->senderName;
-
-
-//            //更新所有状态
-//            QList<QStandardItem *> list = theModel->findItems(id, Qt::MatchFixedString, 1);//在第一列中查找id
-//            for(QStandardItem *aItem : qAsConst(list))
-//            {
-//                int row = aItem->row();
-////                setStatus(row, device->stabyte);
-//                qDebug() << "修改行：" << row;
-//            }
             break;
         }
         case(MESSAGE_ADDDEVICE):
@@ -475,21 +455,6 @@ void QFormMain::recMessage(int type, void* message)
                 refreshSignDev(signdev);
                 qDebug() << "更新设备" << signdev->id << " : " << signdev->name << " : " << signdev->senderName;
             }
-//            //插入一行
-//            QString sign;
-//            if(SignTable.find(device->signidx) != SignTable.end())
-//                sign = SignTable[device->signidx];
-//            else
-//            {
-//                QMessageBox::warning(this, "警告", QString("找不到标示语编号：")+device->signidx);
-//                qDebug() << "找不到标示语编号：" << device->signidx;
-//            }
-//            SignDevice* signdev = new SignDevice(signdev->id, signdev->groupname, signdev->name, signdev->signid);
-//            addDevice(signdev);
-//            SignDevice *signdev = new SignDevice;
-//            addDevice(signdev->id, signdev->groupname, signdev->name, signdev->signid);
-//            addDevice(&signdev);
-//            addDevice(id, device->name, sign, device->stabyte);
             break;
         }
         case(MESSAGE_DISCONNECTION):
@@ -505,14 +470,6 @@ void QFormMain::recMessage(int type, void* message)
                 signdev->offline = 1;//断线
                 refreshSignDev(signdev);
             }
-//            //删除一行
-//            QList<QStandardItem *> list = theModel->findItems(id, Qt::MatchFixedString, 1);//在第一列中查找id
-//            for(QStandardItem *aItem : qAsConst(list))
-//            {
-//                int row = aItem->row();
-//                qDebug() << "删除行：" << row;
-//                theModel->removeRow(row);
-//            }
             break;
         }
     }
@@ -692,32 +649,55 @@ QStandardItem *QFormMain::addLine(const SignDevice *signdev)
     aItemList << aItem;
     //报警状态
     QString sta;
+    QBrush brush = QBrush(Qt::white);
     if(signdev->stafault)
     {
         if(signdev->fault.people_approach)
+        {
             sta += "人员靠近 ";
+            brush = QBrush(Qt::darkRed);
+        }
         if(signdev->fault.Power)
+        {
             sta += "电源故障 ";
+            brush = QBrush(Qt::darkBlue);
+        }
         if(signdev->fault.controller)
+        {
             sta += "控制器故障 ";
+            brush = QBrush(Qt::darkCyan);
+        }
         if(signdev->fault.power_off)
+        {
             sta += "交流电断电 ";
+            brush = QBrush(Qt::darkMagenta);
+        }
         if(signdev->fault.low_battery)
+        {
             sta += "电池电量过低 ";
+            brush = QBrush(Qt::darkYellow);
+        }
         if(signdev->fault.manual_configuration)
+        {
             sta += "红外遥控手动配置中 ";
+            brush = QBrush(Qt::darkGray);
+        }
         MainWindow::showMessageBox(QMessageBox::Warning, "警告", signdev->name+":"+sta, 2000);
     }else
         sta = "无异常";
     aItem=new QStandardItem(sta);
     aItem->setTextAlignment(Qt::AlignCenter);
     aItem->setEditable(false);//禁止编辑
+//    aItem->setForeground(brush);//设置文字颜色
+//    theModel->setData(aItem->index(), brush, Qt::BackgroundColorRole);//设置颜色
     aItemList << aItem;
+
 
 
 
     //添加到新的一行
     theModel->insertRow(theModel->rowCount(), aItemList); //插入一行，需要每个Cell的Item
+    theModel->setData(aItem->index(), brush, Qt::BackgroundColorRole);//设置状态栏颜色
     QModelIndex curIndex = theModel->index(theModel->rowCount()-1, 0);//创建最后一行的ModelIndex
     theSelection->clearSelection();//清空选择项
     theSelection->setCurrentIndex(curIndex, QItemSelectionModel::Select);//设置刚插入的行为当前选择行
@@ -892,63 +872,48 @@ QBitArray QFormMain::refreshSignDev(SignDevice *signdev)
 
     //设置报警状态
     QString sta;
+    QBrush brush = QBrush(Qt::white);
     if(signdev->stafault)
     {
         if(signdev->fault.people_approach)
+        {
             sta += "人员靠近 ";
+            brush = QBrush(Qt::darkRed);
+        }
         if(signdev->fault.Power)
+        {
             sta += "电源故障 ";
+            brush = QBrush(Qt::darkBlue);
+        }
         if(signdev->fault.controller)
+        {
             sta += "控制器故障 ";
+            brush = QBrush(Qt::darkCyan);
+        }
         if(signdev->fault.power_off)
+        {
             sta += "交流电断电 ";
+            brush = QBrush(Qt::darkMagenta);
+        }
         if(signdev->fault.low_battery)
+        {
             sta += "电池电量过低 ";
+            brush = QBrush(Qt::darkYellow);
+        }
         if(signdev->fault.manual_configuration)
+        {
             sta += "红外遥控手动配置中 ";
+            brush = QBrush(Qt::darkGray);
+        }
     }else
         sta = "无异常";
-    res[8] = modifyCell(signdev->item->row(), 8, sta);
+    res[8] = modifyCell(signdev->item->row(), 8, sta, QIcon(), brush);
     if(res[8] && signdev->stafault)//如果修改了 且 有异常 则需要提醒
     {
         MainWindow::showMessageBox(QMessageBox::Warning, "警告", signdev->name+":"+sta, 2000);
     }
-
-//    res[4] = modifyCell(signdev->item->row(), 4, signdev->offline==1?"离线":"在线", );
-//    res[5] = modifyCell(signdev->item->row(), 5, signdev->voice==1?"开":"关");
-//    res[6] = modifyCell(signdev->item->row(), 6, signdev->flash==1?"开":"关");
-//    res[7] = modifyCell(signdev->item->row(), 7, signdev->alert==1?"开":"关");
     return res;
 }
-
-////设置状态
-//void QFormMain::setStatus(int row, quint8 staBytes)
-//{
-//    //警示状态
-//    if(staBytes&0x01)
-//        modifyCell(row, 7, "开");
-//    else
-//        modifyCell(row, 7, "关");
-//    //闪光状态
-//    if(staBytes&0x02)
-//        modifyCell(row, 6, "开");
-//    else
-//        modifyCell(row, 6, "关");
-//    //语音状态
-//    if(staBytes&0x04)
-//        modifyCell(row, 5, "开");
-//    else
-//        modifyCell(row, 5, "关");
-//    //离线状态
-//    if(staBytes&0x08)
-//        modifyCell(row, 4, "开");
-//    else
-//        modifyCell(row, 4, "关");
-//}
-
-
-
-
 
 
 //事件截获

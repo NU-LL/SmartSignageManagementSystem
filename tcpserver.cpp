@@ -152,6 +152,7 @@ int TcpServer::sendMessage(TcpDevice* tcpdev, quint8 addr, quint8 type, const QB
     t.setSingleShot(true);
     connect(&t, &QTimer::timeout, &loop, &QEventLoop::quit);  //异步调用超时退出
     connect(tcpdev, &TcpDevice::received, &loop, &QEventLoop::quit);  //异步调用完成退出
+//    connect(tcpdev, &TcpDevice::received_queue, &loop, &QEventLoop::quit, Qt::QueuedConnection);  //异步调用完成退出
     //调用异步函数
     if(func == nullptr)//注册回调
     {
@@ -171,11 +172,16 @@ int TcpServer::sendMessage(TcpDevice* tcpdev, quint8 addr, quint8 type, const QB
     sendMessage_noblock(addr, type, data, tcpdev->info);
     t.start(timeover);
 
+    qDebug() << tcpdev->info << " 等待接收数据";
+
     loop.exec();//事件循环开始，阻塞，直到定时时间到或收到received信号
     //不能删除回调
     //如果多设备同时响应同一条指令，删除后会找不到
     //回调函数最好别用匿名函数，如果使用 匿名函数中最好别用栈空间的临时变量
 //    disregisterCallback(type);//主动删除回调函数
+
+    qDebug() <<"阻塞结束";
+
     if (t.isActive())
         t.stop();
     else//超时
@@ -410,6 +416,7 @@ void TcpServer::timeout()
             return ;
         }
         TcpDevice* device = it.value();
+        QString id = it.key();
         if(device == nullptr)
         {
             qCritical() << "device == nullptr, idx:" << idx << " key:" << it.key() << " val:" << it.value();
@@ -421,11 +428,14 @@ void TcpServer::timeout()
             // 仅仅支持服务器主动发送 不支持下位机主动上报
             QByteArray data;
             //一般状态
-            sendMessage(device, 00, 01, data, cmd_01_callback);
+//            sendMessage(device, 00, 01, data, cmd_01_callback);
+            sendMessage(id, 00, 01, data, cmd_01_callback);
             //名称、安装位置
-            sendMessage(device, 00, 72, data, cmd_72_callback);
+//            sendMessage(device, 00, 72, data, cmd_72_callback);
+            sendMessage(id, 00, 72, data, cmd_72_callback);
 
-            emit message(MESSAGE_CHANGE_STATUS, device);//发送消息 修改界面状态
+
+            emit message(MESSAGE_CHANGE_STATUS, findTcpDevice(id));//发送消息 修改界面状态
         }
 
 
@@ -498,11 +508,15 @@ void TcpServer::onServerDisconnected()
         MainWindow::showMessageBox(QMessageBox::Information, tr("提示"), QString("客户端断开连接:%1").arg(info), 2000);
         emit message(MESSAGE_DISCONNECTION, findTcpDevice_ip(info));//发送消息
 
+
         QString id = Ip2IdTable[info];
+//        qDebug() << "发送删除对象信号";
+//        emit DeviceTab[id]->received_queue();//删除对象前需要退出所有阻塞的send函数
         delete DeviceTab[id];//删除设备对象
         DeviceTab.remove(id);//设备表中移除键值对
         unbindTable(info, id);//解绑
         tcp->deleteLater();//直接删除该tcp对象
+        qDebug() << "对象已经删除";
     }
 
     if(DeviceTab.empty())

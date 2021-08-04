@@ -232,22 +232,31 @@ private:
     //关闭窗口信号
     void closeEvent(QCloseEvent *event);
     //修改某一项
-    bool modifyCell(int row, int column, const QString &text, const QIcon &icon = QIcon()){
+    bool modifyCell(int row, int column, const QString &text, const QIcon &icon = QIcon(), const QBrush &brush = QBrush(Qt::white)){
         QStandardItem* aItem = theModel->item(row, column);
         if(aItem == nullptr)
         {
             QMessageBox::warning(this, "警告", QString("修改(%1, %2)处失败，超出范围").arg(row).arg(column));
             return false;
         }
-        if(aItem->text() == text)
-            return false;
-        else
+        bool res = false;
+        if(aItem->text() != text)
         {
             aItem->setText(text);
-            if(!icon.isNull())
-                aItem->setIcon(icon);
+            res = true;
         }
-        return true;
+        if(!icon.isNull())
+        {
+            aItem->setIcon(icon);
+            res = true;
+        }
+        if(aItem->foreground() != brush)
+        {
+//            aItem->setForeground(brush);//设置文字颜色
+            theModel->setData(aItem->index(), brush, Qt::BackgroundColorRole);//设置颜色
+            res = true;
+        }
+        return res;
     };
 
 public:

@@ -51,6 +51,7 @@ public:
 
 signals:
     void received(void);
+    void received_queue(void);
 
 public:
     QString info;
