@@ -13,6 +13,8 @@
 #include "device/tcpserver.h"
 #include "device/tcpsigndevice.h"
 
+extern MainWindow* mainWindow;
+
 QFormDebug::QFormDebug(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::QFormDebug)
@@ -64,6 +66,35 @@ QFormDebug::~QFormDebug()
     delete ui;
 }
 
+
+
+void QFormDebug::showMessageBox(QMessageBox::Icon icon, QString title, QString text, int ms, bool isBlock)
+{
+    QWidget* formDebug = mainWindow->getQFormDebug();
+    if(formDebug == nullptr)
+        return ;
+
+    //模态显示对话框
+    QMessageBox* msgBox = new QMessageBox( formDebug );
+    msgBox->setAttribute( Qt::WA_DeleteOnClose ); //makes sure the msgbox is deleted automatically when closed
+    msgBox->setStandardButtons( QMessageBox::Ok );
+    msgBox->setWindowTitle(title);
+    msgBox->setText(text);
+    msgBox->setModal( false ); // if you want it non-modal
+    msgBox->setIcon(icon);
+    if(ms != 0)
+        QTimer::singleShot(ms, msgBox, &QMessageBox::accept);//定时关闭 ms
+    if(isBlock)
+        msgBox->exec();
+    else
+        msgBox->show();
+}
+
+
+
+
+
+
 //消息接收槽函数
 //level：QMessageBox级别
 //      3,2,1,0<==>critical,warning,information,question
@@ -82,12 +113,18 @@ void QFormDebug::recMessage(int type, void* message)
 //            ui->label_DeviceId->setText(server.findId(ip));
             break;
         }
-        case(MESSAGE_DISCONNECTION):
+//        case(MESSAGE_DISCONNECTION):
+//        {
+//            TcpSignDevice* dev = static_cast<TcpSignDevice*>(message);
+//            int idx = ui->comboBox_DeviceInfo->findText(dev->info);
+//            ui->comboBox_DeviceInfo->removeItem(idx);//如果idx无效什么也不会做
+//            break;
+//        }
+        case(MESSAGE_DISCONNECTION_INFO):
         {
-            TcpSignDevice* dev = static_cast<TcpSignDevice*>(message);
-            int idx = ui->comboBox_DeviceInfo->findText(dev->info);
+            const QString info = *(const QString*)message;
+            int idx = ui->comboBox_DeviceInfo->findText(info);
             ui->comboBox_DeviceInfo->removeItem(idx);//如果idx无效什么也不会做
-            break;
         }
     }
 }

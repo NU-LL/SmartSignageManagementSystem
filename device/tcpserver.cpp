@@ -9,6 +9,7 @@
 
 #include "ui/mainwindow.h"
 #include "ui/qformmain.h"
+#include "ui/qformdebug.h"
 
 extern MainWindow* mainWindow;
 
@@ -213,13 +214,15 @@ void TcpServer::onServerNewConnection()
     QTcpSocket *tcp = m_server.nextPendingConnection();     //获取新的客户端信息
     QString info = tcp->peerAddress().toString() + ":" + QString("%1").arg(tcp->peerPort());
     qDebug() << "连接客户端：" << info;
-    MainWindow::showMessageBox(QMessageBox::Information, tr("提示"), QString("新的客户端连入:%1").arg(info), 2000);
+    QFormDebug::showMessageBox(QMessageBox::Information, tr("提示"), QString("新的客户端连入:%1").arg(info), 2000);
+    MainWindow::showStatusText(QString("新的客户端连入:%1").arg(info));
     emit message(MESSAGE_NEWCONNECTION, &info);//发送消息
 
     tcp->setObjectName(info);//设置名称
 
     connect(tcp, &QTcpSocket::connected, this, &TcpServer::onServerConnected);
-    connect(tcp, &QTcpSocket::disconnected, this, &TcpServer::onServerDisconnected, Qt::QueuedConnection);//换成 Qt::QueuedConnection 或许更好？
+    connect(tcp, &QTcpSocket::disconnected, this, &TcpServer::onServerDisconnected_before);
+    connect(tcp, &QTcpSocket::disconnected, this, &TcpServer::onServerDisconnected, Qt::QueuedConnection);
     connect(tcp, &QTcpSocket::readyRead, this, &TcpServer::onServerDataReady);
     connect(tcp, static_cast<void (QTcpSocket:: *)(qint64)>(&QTcpSocket::bytesWritten),
             this, static_cast<void (TcpServer:: *)(qint64)>(&TcpServer::onServerBytesWritten));
@@ -361,6 +364,26 @@ void TcpServer::onServerConnected()
 {
 }
 
+//用于获得精确的ip与断开
+//删除debug窗口信息用
+//此时tcp还没有断开 里边的信息（ip、port）还能用
+void TcpServer::onServerDisconnected_before()
+{
+    QTcpSocket* tcp = dynamic_cast<QTcpSocket*>(sender());
+    if( tcp != NULL )       //从连接对象中移除掉
+    {
+        //弹窗报警
+        QString str = QString("连接断开，ip：%1 端口%2").arg(tcp->peerAddress().toString()).arg(tcp->peerPort());
+        QFormDebug::showMessageBox(QMessageBox::Information, tr("提示"), str, 2000);
+        qDebug() << str;
+
+        //发送断开消息
+        QString info = tcp->peerAddress().toString() + ":" + QString("%1").arg(tcp->peerPort());
+        emit message(MESSAGE_DISCONNECTION_INFO, &info);//发送消息
+    }
+}
+
+//此时tcp已经断开 里边的信息（ip、port）已经不存在
 void TcpServer::onServerDisconnected()
 {
     QTcpSocket* tcp = dynamic_cast<QTcpSocket*>(sender());
@@ -368,14 +391,14 @@ void TcpServer::onServerDisconnected()
     {
         TcpSignDevice* device = tcp->property("TcpSignDevice").value<TcpSignDevice*>();
 
-        //弹窗报警
-        QString str;
-        if(tcp->state() == QAbstractSocket::ConnectedState)
-            str = QString("连接断开，ip：%1 端口%2").arg(tcp->peerAddress().toString()).arg(tcp->peerPort());
-        else
-            str = QString("连接断开，ip：%1 端口%2（如果该设备多id同时登录，ip与端口信息可能有误）").arg(device->ip).arg(device->port);
-        MainWindow::showMessageBox(QMessageBox::Information, tr("提示"), str, 2000);
-        qDebug() << str;
+//        //弹窗报警
+//        QString str;
+//        if(tcp->state() == QAbstractSocket::ConnectedState)
+//            str = QString("连接断开，ip：%1 端口%2").arg(tcp->peerAddress().toString()).arg(tcp->peerPort());
+//        else
+//            str = QString("连接断开，ip：%1 端口%2（如果该设备多id同时登录，ip与端口信息可能有误）").arg(device->ip).arg(device->port);
+//        MainWindow::showMessageBox(QMessageBox::Information, tr("提示"), str, 2000);
+//        qDebug() << str;
 
         //更新断开状态
         if(!device->q_tcp.isEmpty())//如果非空 则移出最开始的一个
@@ -385,11 +408,14 @@ void TcpServer::onServerDisconnected()
             {
                 device->offline = 1;//离线
                 device->init = false;//初始化未成功
+            }else//否则说明有多个tcp链接
+            {
+
             }
         }else
             qWarning() << "断开节点时，tcp list为空";
-        //发送断开连接信息
-        emit message(MESSAGE_DISCONNECTION, device);//发送消息
+
+        emit message(MESSAGE_CHANGE_STATUS, device);//发送刷新状态消息
 
         tcp->deleteLater();//直接删除该tcp对象
         qDebug() << "对象已经删除";

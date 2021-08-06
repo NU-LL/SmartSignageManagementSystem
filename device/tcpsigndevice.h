@@ -81,6 +81,8 @@ public://初始化
     {
         return sendMessage(this->id, addr, type, data, func, timeover);
     };
+    //仅限于获取到id之后使用该函数
+    int sendFile(const QString& filepath);
 
 
 public://全局表
@@ -119,6 +121,7 @@ signals://信号
 private://回调函数
     void callbackInit();
     static void cmd_default_callback(void *dev, quint8 addr, quint8 type, const QByteArray &data);
+    static void cmd_22_callback(void *dev, quint8 addr, quint8 type, const QByteArray &data);
     static void cmd_72_callback(void *dev, quint8 addr, quint8 type, const QByteArray &data);
     static void cmd_79_callback(void *dev, quint8 addr, quint8 type, const QByteArray &data);
     static void cmd_01_callback(void *dev, quint8 addr, quint8 type, const QByteArray &data);
@@ -136,6 +139,7 @@ public://设备属性
 //    QString sign;//标示语
     QString signid;//标示语编号
     QString imageidx;//图片编号
+    QList<QString> images;//目前所拥有的图片
     quint8 light;//显示亮度
     quint8 vol;//语音音量
     quint8 delay;//提示延时

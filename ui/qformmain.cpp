@@ -84,7 +84,7 @@ void QFormMain::recMessage(int type, void* message)
 
     switch(type)
     {
-        case(MESSAGE_DISCONNECTION)://断开设备
+//        case(MESSAGE_DISCONNECTION)://断开设备
         case(MESSAGE_CHANGE_STATUS)://刷新设备
         {
             TcpSignDevice* dev = static_cast<TcpSignDevice*>(message);
@@ -615,16 +615,40 @@ void QFormMain::on_tableView_doubleClicked(const QModelIndex &index)
             //发送信息
 
             QByteArray data;
+
+            //发送标示语信息
+            if(res[3])//只有当警示语变更时才发送文本信息
+            {
+                data += QString("%1").arg(sign->id, 3, QLatin1Char('0')).toLocal8Bit();//提示语编号
+                data += sign->text.toLocal8Bit();//警示语内容
+                dev->sendMessage(00, 12, data);//发送警示语文本信息
+                data.clear();
+
+                if(!sign->iconfilename.isEmpty())//有图标才判断
+                {
+                    //获得下位机图标列表
+                    dev->sendMessage(00, 22);//获得下位机列表
+                    if(dev->images.contains(sign->geticonbasename()) == false)//下位机中不包含当前图标
+                    {
+                        qDebug() << "准备更新下位机图标：" << sign->iconfilename;
+                        //发送新图标
+                        dev->sendFile(sign->getIconAbsolutePath());
+                    }
+                }
+            }
+
+            //发送状态
             data += dev->stabyte;//模式，即状态字
             data += sign->color;//颜色
             data += dev->light;//亮度
             data += dev->vol;//音量
             data += dev->delay;//报警时间
             data += QString("%1").arg(sign->id, 3, QLatin1Char('0')).toLocal8Bit();//提示语编号
-            data += "000";//图片编号
+            data += sign->geticonbasename().rightJustified(3, '0').left(3).toLocal8Bit();//图片编号
             dev->sendMessage(00, 02, data);//发送状态信息
             data.clear();
 
+            //发送名字与安装位置
             if(res[2])//修改名称
             {
                 data += QString("%1").arg(dev->name, -16, QLatin1Char(0)).toLocal8Bit();//名称
@@ -633,13 +657,7 @@ void QFormMain::on_tableView_doubleClicked(const QModelIndex &index)
                 data.clear();
             }
 
-            if(res[3])//只有当警示语变更时才发送文本信息
-            {
-                data += QString("%1").arg(sign->id, 3, QLatin1Char('0')).toLocal8Bit();//提示语编号
-                data += sign->text.toLocal8Bit();//警示语内容
-                dev->sendMessage(00, 12, data);//发送警示语文本信息
-                data.clear();
-            }
+
         }
     }
     delete dlgSignDev;

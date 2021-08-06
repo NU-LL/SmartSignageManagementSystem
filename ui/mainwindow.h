@@ -21,7 +21,11 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
-    static void showMessageBox(QMessageBox::Icon icon, QString title, QString text, int ms = 0, bool isBlock = false);
+    static void showMessageBox(QMessageBox::Icon icon, const QString &title, const QString &text, int ms = 0, bool isBlock = false);
+    static void showStatusText(const QString& text, int ms = 3000);
+
+    QWidget *getQFormDebug();
+
 
 
 public slots:

@@ -36,7 +36,6 @@ MainWindow::MainWindow(QWidget *parent)
     }
 
 
-
     QTimer::singleShot(10, this, &MainWindow::on_actionMain_triggered);//单次定时器 10ms后触发
 }
 
@@ -57,7 +56,7 @@ MainWindow::~MainWindow()
 
 
 
-void MainWindow::showMessageBox(QMessageBox::Icon icon, QString title, QString text, int ms, bool isBlock)
+void MainWindow::showMessageBox(QMessageBox::Icon icon, const QString &title, const QString &text, int ms, bool isBlock)
 {
     //模态显示对话框
     QMessageBox* msgBox = new QMessageBox( mainWindow );
@@ -74,6 +73,12 @@ void MainWindow::showMessageBox(QMessageBox::Icon icon, QString title, QString t
     else
         msgBox->show();
 }
+
+void MainWindow::showStatusText(const QString &text, int ms)
+{
+    mainWindow->ui->statusbar->showMessage(text, ms);
+}
+
 
 
 
@@ -128,7 +133,19 @@ void MainWindow::recData(QTcpSocket *tcp, const QByteArray& data)
 
 
 
-
+//获得调试窗口的句柄
+QWidget *MainWindow::getQFormDebug()
+{
+    foreach (QMdiSubWindow *window, ui->mdiArea->subWindowList())
+    {
+        QWidget *mdiChild = (QWidget*)(window);
+        if ( mdiChild->windowTitle() == tr("调试"))
+        {
+            return mdiChild;
+        }
+    }
+    return nullptr;
+}
 
 
 //启动调试

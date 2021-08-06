@@ -102,7 +102,10 @@ void QDialogSetSign::on_buttonBox_accepted()
     //保存信息到对象中
     sign->id = ui->lineEdit_Id->text();//仅仅在一开始添加时 lineEdit_Id 才会允许编辑 该项才有机会修改
     sign->text = ui->lineEdit_SignText->text();
-    sign->iconfilename = ui->comboBox_Icon->currentText();
+    if(ui->comboBox_Icon->currentText() == "无图标")
+        sign->iconfilename = QString();
+    else
+        sign->iconfilename = ui->comboBox_Icon->currentText();
     sign->color = ui->comboBox_Color->currentIndex();
 }
 

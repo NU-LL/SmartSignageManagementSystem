@@ -3,7 +3,7 @@
 
 #include <QWidget>
 #include <QTcpSocket>
-
+#include <QMessageBox>
 
 namespace Ui {
 class QFormDebug;
@@ -23,6 +23,8 @@ public:
 //    }
     explicit QFormDebug(QWidget *parent = nullptr);
     ~QFormDebug();
+
+    static void showMessageBox(QMessageBox::Icon icon, QString title, QString text, int ms = 0, bool isBlock = false);
 
 
     QString hexDump(const QByteArray &data, bool ishtml = false);

@@ -37,6 +37,7 @@ public:
     QString text;//警示语
 //    int iconidx;//图标在files中的偏移
     QString iconfilename;//图标文件名字
+
     //颜色
     union{
         struct{
@@ -63,7 +64,9 @@ public:
 
 
     //获得图标句绝对路径
-    const QString getIconAbsolutePath() const {return QDir(QFormOptions::IconPath).absoluteFilePath(iconfilename);};
+    const QString getIconAbsolutePath() const { return QDir(QFormOptions::IconPath).absoluteFilePath(iconfilename);};
+    //获得图标名字
+    const QString geticonbasename() const { return QFileInfo(iconfilename).baseName(); };
     //获得icon对应的数据
     const QPixmap getPixmap() const {return QPixmap(this->getIconAbsolutePath());};
     //获得图标

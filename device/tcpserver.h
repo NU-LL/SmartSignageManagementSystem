@@ -19,10 +19,11 @@
 
 //#define MESSAGE_BOX                 (0)
 #define MESSAGE_NEWCONNECTION       (1)
-#define MESSAGE_DISCONNECTION       (2)
-#define MESSAGE_ADDDEVICE           (3)
-//#define MESSAGE_ADDDEVICE_STR       (4)
-#define MESSAGE_CHANGE_STATUS       (5)
+//#define MESSAGE_DISCONNECTION       (2)
+#define MESSAGE_DISCONNECTION_INFO  (3)
+#define MESSAGE_ADDDEVICE           (4)
+//#define MESSAGE_ADDDEVICE_STR       (5)
+#define MESSAGE_CHANGE_STATUS       (6)
 
 
 
@@ -92,6 +93,7 @@ private slots:
 //    void timeout(){timeout(false);};
     void onServerNewConnection();
     void onServerConnected();
+    void onServerDisconnected_before();
     void onServerDisconnected();
     void onServerDataReady();
     void onServerBytesWritten(qint64 bytes);

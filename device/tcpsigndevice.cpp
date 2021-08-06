@@ -204,17 +204,58 @@ int TcpSignDevice::sendMessage(const QString& id, quint8 addr, quint8 type, cons
     return 1;
 }
 
+//发送文件
+int TcpSignDevice::sendFile(const QString &filepath)
+{
+    const static quint8 type = 10;//文件发送帧类型
+    const static int times = 5;//超时重试次数
 
+    QFile file(filepath);
+    file.open(QIODevice::ReadOnly);
+    const QString &filename = QFileInfo(filepath).fileName();
 
+    int pos = 0;
+    int filesize;
+    do
+    {
+        QByteArray data;
+        //文件名
+        data += filename.toLocal8Bit().leftJustified(8, '\0').left(8);//限制到8位
+        //偏移
+        data += (pos >> 24) & 0xff;//长度
+        data += (pos >> 16) & 0xff;
+        data += (pos >> 8) & 0xff;
+        data += pos & 0xff;
+        //文件数据
+        data += file.read(1024);//最大1024
+        Frame frame(00, type, data);
+        filesize = data.length()-8-4;//获得文件数据的大小
+        pos += filesize;
+        //发送数据
+        int _times = 0;
+        if(sendMessage(00, type, data, cmd_default_callback) != 1)
+        {
+            qDebug() << "文件发送超时或失败";
+            if(++_times >= times)
+            {
+                qDebug() << "超时或失败重发达到最大次数，退出本次发送";
+                return -1;
+            }
+        }
+        qDebug() << QString("发送文件长度：%1").arg(filesize);
+    }while (filesize == 1024);
+    return 0;
+}
 
 
 
 //=======================回调函数===============================
-
 void TcpSignDevice::callbackInit()
 {
     if(!CallbackTable.contains(01))
         CallbackTable[01] = cmd_01_callback;
+    if(!CallbackTable.contains(22))
+        CallbackTable[22] = cmd_22_callback;
     if(!CallbackTable.contains(72))
         CallbackTable[72] = cmd_72_callback;
     if(!CallbackTable.contains(79))
@@ -231,13 +272,83 @@ void TcpSignDevice::cmd_default_callback(void *dev, quint8 addr, quint8 type, co
     else
         MainWindow::showMessageBox(QMessageBox::Warning, tr("警告"), QString("设备处理失败[%1命令]").arg(type), 2000);
 };
+
+void TcpSignDevice::cmd_01_callback(void *dev, quint8 addr, quint8 type, const QByteArray &data)
+{
+    Q_UNUSED(addr);
+    Q_UNUSED(type);
+    if(data[0] != '0')
+    {
+        MainWindow::showMessageBox(QMessageBox::Warning, tr("警告"), QString("设备处理状态信号[01帧]失败，故障信息：0x%1").arg(data[1], 2, 16, QLatin1Char('0')));
+        return ;
+    }
+    if(data.size() != 0x0d)
+    {
+        MainWindow::showMessageBox(QMessageBox::Warning, tr("警告"), "状态信号[01帧]数据长度错误");
+        return ;
+    }
+    QTcpSocket *tcp = (QTcpSocket *)dev;
+    TcpSignDevice *device = tcp->property("TcpSignDevice").value<TcpSignDevice *>();
+    if(device == nullptr)
+    {
+        qDebug() << "device 为空";
+        return ;
+    }
+
+    quint8 staFault = data[1];//异常状态
+    quint8 staBit = data[2];//状态字
+    quint8 color = data[3];//颜色
+    quint8 light = data[4];//亮度
+    quint8 vol = data[5];//音量
+    quint8 delay = data[6];//报警时间
+    QString signNum;//警示语标号
+    signNum += data[7];
+    signNum += data[8];
+    signNum += data[9];
+    QString imageNum;//图片编号
+    imageNum += data[10];
+    imageNum += data[11];
+    imageNum += data[12];
+
+    //显示异常
+    device->stafault = staFault;
+    //设置状态
+    device->stabyte = staBit;
+    device->signid = signNum;
+    device->imageidx = imageNum;
+    device->light = light;
+    device->vol = vol;
+    device->delay = delay;
+    device->color = color;
+    device->offline = 0;//在线
+}
+
+void TcpSignDevice::cmd_22_callback(void *dev, quint8 addr, quint8 type, const QByteArray &data)
+{
+    Q_UNUSED(addr);
+    Q_UNUSED(type);
+    if(data[0] != '0')
+    {
+        MainWindow::showMessageBox(QMessageBox::Warning, tr("警告"), QString("设备处理失败[%1命令]").arg(type), 2000);
+        return ;
+    }
+    QTcpSocket *tcp = (QTcpSocket *)dev;
+    TcpSignDevice *device = tcp->property("TcpSignDevice").value<TcpSignDevice *>();
+    if(device == nullptr)
+    {
+        qDebug() << "device 为空";
+        return ;
+    }
+
+    QString str = data.right(data.size()-1);//去除第一位的结果位
+    device->images.clear();
+    device->images = str.split(' ');
+};
+
 void TcpSignDevice::cmd_72_callback(void *dev, quint8 addr, quint8 type, const QByteArray &data)
 {
     Q_UNUSED(addr);
     Q_UNUSED(type);
-    QTcpSocket *tcp = (QTcpSocket *)dev;
-    TcpSignDevice *device = tcp->property("TcpSignDevice").value<TcpSignDevice *>();
-
     if(data[0] != '0')
     {
         MainWindow::showMessageBox(QMessageBox::Warning, tr("警告"), "读取警示牌的名称和安装位置[72帧]失败");
@@ -248,6 +359,8 @@ void TcpSignDevice::cmd_72_callback(void *dev, quint8 addr, quint8 type, const Q
         MainWindow::showMessageBox(QMessageBox::Warning, tr("警告"), "读取警示牌的名称和安装位置[72帧]数据长度错误");
         return ;
     }
+    QTcpSocket *tcp = (QTcpSocket *)dev;
+    TcpSignDevice *device = tcp->property("TcpSignDevice").value<TcpSignDevice *>();
 
     QString name;
     QString location;
@@ -266,13 +379,11 @@ void TcpSignDevice::cmd_72_callback(void *dev, quint8 addr, quint8 type, const Q
     device->location = location;
     device->offline = 0;//在线
 }
+
 void TcpSignDevice::cmd_79_callback(void *_dev, quint8 addr, quint8 type, const QByteArray &data)
 {
     Q_UNUSED(addr);
     Q_UNUSED(type);
-    QTcpSocket *tcp = (QTcpSocket *)_dev;
-    TcpSignDevice *dev = tcp->property("TcpSignDevice").value<TcpSignDevice *>();
-
     if(data[0] != '0')
     {
         MainWindow::showMessageBox(QMessageBox::Warning, "警告", "设备处理警示牌信息[79帧]失败");
@@ -283,6 +394,8 @@ void TcpSignDevice::cmd_79_callback(void *_dev, quint8 addr, quint8 type, const 
         MainWindow::showMessageBox(QMessageBox::Warning, "警告", "警示牌信息[79帧]数据长度错误");
         return ;
     }
+    QTcpSocket *tcp = (QTcpSocket *)_dev;
+    TcpSignDevice *dev = tcp->property("TcpSignDevice").value<TcpSignDevice *>();
 
     QString name;
     QString location;
@@ -317,56 +430,7 @@ void TcpSignDevice::cmd_79_callback(void *_dev, quint8 addr, quint8 type, const 
     dev->offline = 0;//在线
     //这里无需考虑info info在new时已经指定
 }
-void TcpSignDevice::cmd_01_callback(void *dev, quint8 addr, quint8 type, const QByteArray &data)
-{
-    Q_UNUSED(addr);
-    Q_UNUSED(type);
-    QTcpSocket *tcp = (QTcpSocket *)dev;
-    TcpSignDevice *device = tcp->property("TcpSignDevice").value<TcpSignDevice *>();
 
-    if(data[0] != '0')
-    {
-        MainWindow::showMessageBox(QMessageBox::Warning, tr("警告"), QString("设备处理状态信号[01帧]失败，故障信息：0x%1").arg(data[1], 2, 16, QLatin1Char('0')));
-        return ;
-    }
-    if(data.size() != 0x0d)
-    {
-        MainWindow::showMessageBox(QMessageBox::Warning, tr("警告"), "状态信号[01帧]数据长度错误");
-        return ;
-    }
-    if(device == nullptr)
-    {
-        qDebug() << "device 为空";
-        return ;
-    }
-
-    quint8 staFault = data[1];//异常状态
-    quint8 staBit = data[2];//状态字
-    quint8 color = data[3];//颜色
-    quint8 light = data[4];//亮度
-    quint8 vol = data[5];//音量
-    quint8 delay = data[6];//报警时间
-    QString signNum;//警示语标号
-    signNum += data[7];
-    signNum += data[8];
-    signNum += data[9];
-    QString imageNum;//图片编号
-    imageNum += data[10];
-    imageNum += data[11];
-    imageNum += data[12];
-
-    //显示异常
-    device->stafault = staFault;
-    //设置状态
-    device->stabyte = staBit;
-    device->signid = signNum;
-    device->imageidx = imageNum;
-    device->light = light;
-    device->vol = vol;
-    device->delay = delay;
-    device->color = color;
-    device->offline = 0;//在线
-}
 
 
 
