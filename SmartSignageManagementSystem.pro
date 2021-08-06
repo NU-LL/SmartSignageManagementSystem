@@ -10,48 +10,50 @@ CONFIG += c++11
 
 SOURCES += \
     main.cpp \
-    mainwindow.cpp \
-    protocol.cpp \
-    qdialogadddev.cpp \
-    qdialogsetsign.cpp \
-    qdialogsetsigndev.cpp \
-    qdlgabout.cpp \
-    qdlglogin.cpp \
-    qformdebug.cpp \
-    qformdebugcmd.cpp \
-    qformmain.cpp \
-    qformoptions.cpp \
-    qformsigntable.cpp \
-    tcpserver.cpp
+    ui/mainwindow.cpp \
+    protocol/protocol.cpp \
+    ui/qdialogadddev.cpp \
+    ui/qdialogsetsign.cpp \
+    ui/qdialogsetsigndev.cpp \
+    ui/qdlgabout.cpp \
+    ui/qdlglogin.cpp \
+    ui/qformdebug.cpp \
+    ui/qformdebugcmd.cpp \
+    ui/qformmain.cpp \
+    ui/qformoptions.cpp \
+    ui/qformsigntable.cpp \
+    device/tcpserver.cpp \
+    device/tcpsigndevice.cpp
 
 HEADERS += \
     config.h \
-    mainwindow.h \
-    protocol.h \
-    qdialogadddev.h \
-    qdialogsetsign.h \
-    qdialogsetsigndev.h \
-    qdlgabout.h \
-    qdlglogin.h \
-    qformdebug.h \
-    qformdebugcmd.h \
-    qformmain.h \
-    qformoptions.h \
-    qformsigntable.h \
-    tcpserver.h
+    ui/mainwindow.h \
+    protocol/protocol.h \
+    ui/qdialogadddev.h \
+    ui/qdialogsetsign.h \
+    ui/qdialogsetsigndev.h \
+    ui/qdlgabout.h \
+    ui/qdlglogin.h \
+    ui/qformdebug.h \
+    ui/qformdebugcmd.h \
+    ui/qformmain.h \
+    ui/qformoptions.h \
+    ui/qformsigntable.h \
+    device/tcpserver.h \
+    device/tcpsigndevice.h
 
 FORMS += \
-    mainwindow.ui \
-    qdialogadddev.ui \
-    qdialogsetsign.ui \
-    qdialogsetsigndev.ui \
-    qdlgabout.ui \
-    qdlglogin.ui \
-    qformdebug.ui \
-    qformdebugcmd.ui \
-    qformmain.ui \
-    qformoptions.ui \
-    qformsigntable.ui
+    ui/qt_ui_file/mainwindow.ui \
+    ui/qt_ui_file/qdialogadddev.ui \
+    ui/qt_ui_file/qdialogsetsign.ui \
+    ui/qt_ui_file/qdialogsetsigndev.ui \
+    ui/qt_ui_file/qdlgabout.ui \
+    ui/qt_ui_file/qdlglogin.ui \
+    ui/qt_ui_file/qformdebug.ui \
+    ui/qt_ui_file/qformdebugcmd.ui \
+    ui/qt_ui_file/qformmain.ui \
+    ui/qt_ui_file/qformoptions.ui \
+    ui/qt_ui_file/qformsigntable.ui
 
 TRANSLATIONS += \
     SmartSignageManagementSystem_zh_CN.ts

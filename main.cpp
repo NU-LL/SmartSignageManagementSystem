@@ -1,4 +1,4 @@
-#include "mainwindow.h"
+#include "ui/mainwindow.h"
 #include <iostream>
 #include <windows.h>//cout 乱码
 
@@ -11,7 +11,7 @@
 #include <QDir>
 #include <QFileInfo>
 
-#include <qdlglogin.h>
+#include "ui/qdlglogin.h"
 
 MainWindow* mainWindow = nullptr;
 
@@ -49,7 +49,7 @@ void outputMessageHandler(QtMsgType type, const QMessageLogContext &context, con
                 .arg(strMsg, 8).arg(strDateTime, 8).arg(msg);
 #else
     QString strMessage = QString("[%1||line:%2||%3] [%4] [%5] : %6")
-            .arg(QFileInfo(context.file).fileName(), 15)
+            .arg(QFileInfo(context.file).fileName().left(15), 15)
             .arg(context.line, 5)
             .arg(QString(context.function).left(40), 40)
             .arg(strMsg, 8)
