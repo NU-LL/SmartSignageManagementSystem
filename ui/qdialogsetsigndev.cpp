@@ -16,8 +16,9 @@
 #include "qdialogadddev.h"
 
 
-QDialogSetSignDev::QDialogSetSignDev(QWidget *parent) :
+QDialogSetSignDev::QDialogSetSignDev(QWidget *parent, mode batchMode) :
     QDialog(parent),
+    batchMode(batchMode),
     ui(new Ui::QDialogSetSignDev)
 {
     ui->setupUi(this);
@@ -55,6 +56,7 @@ QDialogSetSignDev::QDialogSetSignDev(QWidget *parent) :
 
     //初始化三个checkbox
 
+
 }
 
 QDialogSetSignDev::~QDialogSetSignDev()
@@ -75,24 +77,73 @@ void QDialogSetSignDev::setParameters(TcpSignDevice *dev)
     }
     this->dev = dev;
 
-    ui->label_Id->setText(dev->id);
-    ui->comboBox_GroupName->setCurrentText(dev->groupname);//如果无效，默认设置为第一个
-    ui->lineEdit_Name->setText(dev->name);
-    ui->comboBox_Sign->setCurrentText(sign->text);//如果无效，默认设置为第一个
+    if(batchMode == DEFAULT_MODE)
+    {
+        ui->label_Id->setText(dev->id);
+        ui->lineEdit_Name->setText(dev->name);
+    }else
+    {
+        ui->label_Id->setEnabled(false);
+        ui->lineEdit_Name->setEnabled(false);
+    }
 
-    ui->checkBox_Voice->setChecked(dev->voice==1);
-    ui->checkBox_Flash->setChecked(dev->flash==1);
-    ui->checkBox_Alert->setChecked(dev->alert==1);
+    if(batchMode == DEFAULT_MODE || batchMode == BATCH_MODE || batchMode == GROUP_MODE)
+        ui->comboBox_GroupName->setCurrentText(dev->groupname);//如果无效，默认设置为第一个
+    else
+        ui->comboBox_GroupName->setEnabled(false);
+
+    if(batchMode == DEFAULT_MODE || batchMode == BATCH_MODE || batchMode == SIGN_MODE)
+        ui->comboBox_Sign->setCurrentText(sign->text);//如果无效，默认设置为第一个
+    else
+        ui->comboBox_Sign->setEnabled(false);
+
+
+    if(batchMode == DEFAULT_MODE || batchMode == BATCH_MODE || batchMode == VOICE_MODE)
+        ui->checkBox_Voice->setChecked(dev->voice==1);
+    else
+        ui->checkBox_Voice->setEnabled(false);
+
+    if(batchMode == DEFAULT_MODE || batchMode == BATCH_MODE || batchMode == FLASH_MODE)
+        ui->checkBox_Flash->setChecked(dev->flash==1);
+    else
+        ui->checkBox_Flash->setEnabled(false);
+
+    if(batchMode == DEFAULT_MODE || batchMode == BATCH_MODE || batchMode == ALERT_MODE)
+        ui->checkBox_Alert->setChecked(dev->alert==1);
+    else
+        ui->checkBox_Alert->setEnabled(false);
+
+//    ui->comboBox_GroupName->setCurrentText(dev->groupname);//如果无效，默认设置为第一个
+//    ui->comboBox_Sign->setCurrentText(sign->text);//如果无效，默认设置为第一个
+
+//    ui->checkBox_Voice->setChecked(dev->voice==1);
+//    ui->checkBox_Flash->setChecked(dev->flash==1);
+//    ui->checkBox_Alert->setChecked(dev->alert==1);
 }
 
 //保存对象
 void QDialogSetSignDev::on_buttonBox_accepted()
 {
-    dev->groupname = ui->comboBox_GroupName->currentText();
-    dev->name = ui->lineEdit_Name->text();
-    dev->signid = ui->comboBox_Sign->currentData().value<Sign*>()->id;
-    dev->voice = ui->checkBox_Voice->isChecked() == true?1:0;
-    dev->flash = ui->checkBox_Flash->isChecked() == true?1:0;
-    dev->alert = ui->checkBox_Alert->isChecked() == true?1:0;
+//    dev->groupname = ui->comboBox_GroupName->currentText();
+//    dev->signid = ui->comboBox_Sign->currentData().value<Sign*>()->id;
+
+//    dev->voice = ui->checkBox_Voice->isChecked() == true?1:0;
+//    dev->flash = ui->checkBox_Flash->isChecked() == true?1:0;
+//    dev->alert = ui->checkBox_Alert->isChecked() == true?1:0;
+
+    if(ui->lineEdit_Name->isEnabled())
+        dev->name = ui->lineEdit_Name->text();
+
+    if(ui->comboBox_GroupName->isEnabled())
+        dev->groupname = ui->comboBox_GroupName->currentText();
+    if(ui->comboBox_Sign->isEnabled())
+        dev->signid = ui->comboBox_Sign->currentData().value<Sign*>()->id;
+
+    if(ui->checkBox_Voice->isEnabled())
+        dev->voice = ui->checkBox_Voice->isChecked() == true?1:0;
+    if(ui->checkBox_Flash->isEnabled())
+        dev->flash = ui->checkBox_Flash->isChecked() == true?1:0;
+    if(ui->checkBox_Alert->isEnabled())
+        dev->alert = ui->checkBox_Alert->isChecked() == true?1:0;
 }
 

@@ -16,12 +16,13 @@
 
 #include "protocol/protocol.h"
 #include "ui/mainwindow.h"
-
+#include "qdialogsetsigndev.h"
 #include "qformsigntable.h"
 #include "qdialogadddev.h"
-#include "qdialogsetsigndev.h"
+
 
 extern MainWindow* mainWindow;
+
 
 
 QFormMain::QFormMain(QWidget *parent) :
@@ -91,7 +92,7 @@ void QFormMain::recMessage(int type, void* message)
             if(dev->info == dev->id)//新建立的临时对象无需发送断连消息
                 break;
 //            dev->offline = 0;//在线
-            refreshSignDev(dev);
+            refreshGui(dev);
             qDebug() << "改变状态" << dev->id << " : " << dev->name << " : " << dev->info;
             break;
         }
@@ -226,11 +227,11 @@ QStandardItem *QFormMain::addLine(const TcpSignDevice *dev)
     if(dev->offline)
     {
         aItem->setText("离线");
-        aItem->setIcon(QIcon(":/icon/lixian_1.png"));//设置图标
+        aItem->setIcon(icon_offline);//设置图标
     }else
     {
         aItem->setText("在线");
-        aItem->setIcon(QIcon(":/icon/zaixian_1.png"));//设置图标
+        aItem->setIcon(icon_online);//设置图标
     }
     aItem->setTextAlignment(Qt::AlignCenter);
     aItem->setEditable(false);//禁止编辑
@@ -240,11 +241,11 @@ QStandardItem *QFormMain::addLine(const TcpSignDevice *dev)
     if(dev->voice)
     {
         aItem->setText("开");
-        aItem->setIcon(QIcon(":/icon/kaiguankai.png"));//设置图标
+        aItem->setIcon(icon_open);//设置图标
     }else
     {
         aItem->setText("关");
-        aItem->setIcon(QIcon(":/icon/kaiguanguan.png"));//设置图标
+        aItem->setIcon(icon_close);//设置图标
     }
     aItem->setTextAlignment(Qt::AlignCenter);
     aItem->setEditable(false);//禁止编辑
@@ -254,11 +255,11 @@ QStandardItem *QFormMain::addLine(const TcpSignDevice *dev)
     if(dev->flash)
     {
         aItem->setText("开");
-        aItem->setIcon(QIcon(":/icon/kaiguankai.png"));//设置图标
+        aItem->setIcon(icon_open);//设置图标
     }else
     {
         aItem->setText("关");
-        aItem->setIcon(QIcon(":/icon/kaiguanguan.png"));//设置图标
+        aItem->setIcon(icon_close);//设置图标
     }
     aItem->setTextAlignment(Qt::AlignCenter);
     aItem->setEditable(false);//禁止编辑
@@ -268,11 +269,11 @@ QStandardItem *QFormMain::addLine(const TcpSignDevice *dev)
     if(dev->alert)
     {
         aItem->setText("开");
-        aItem->setIcon(QIcon(":/icon/kaiguankai.png"));//设置图标
+        aItem->setIcon(icon_open);//设置图标
     }else
     {
         aItem->setText("关");
-        aItem->setIcon(QIcon(":/icon/kaiguanguan.png"));//设置图标
+        aItem->setIcon(icon_close);//设置图标
     }
     aItem->setTextAlignment(Qt::AlignCenter);
     aItem->setEditable(false);//禁止编辑
@@ -334,7 +335,7 @@ QStandardItem *QFormMain::addLine(const TcpSignDevice *dev)
 
 
 //更新 SignDevice 中的数据到表格中
-QBitArray QFormMain::refreshSignDev(TcpSignDevice *dev)
+QBitArray QFormMain::refreshGui(TcpSignDevice *dev)
 {
     QBitArray res(16, 0);
     Sign *sign = Sign::findSign(dev->signid);
@@ -367,21 +368,21 @@ QBitArray QFormMain::refreshSignDev(TcpSignDevice *dev)
     }
 
     if(dev->offline)
-        res[4] = modifyCell(dev->item->row(), 4, "离线", QIcon(":/icon/lixian_1.png"));
+        res[4] = modifyCell(dev->item->row(), 4, "离线", icon_offline);
     else
-        res[4] = modifyCell(dev->item->row(), 4, "在线", QIcon(":/icon/zaixian_1.png"));
+        res[4] = modifyCell(dev->item->row(), 4, "在线", icon_online);
     if(dev->voice)
-        res[5] = modifyCell(dev->item->row(), 5, "开", QIcon(":/icon/kaiguankai.png"));
+        res[5] = modifyCell(dev->item->row(), 5, "开", icon_open);
     else
-        res[5] = modifyCell(dev->item->row(), 5, "关", QIcon(":/icon/kaiguanguan.png"));
+        res[5] = modifyCell(dev->item->row(), 5, "关", icon_close);
     if(dev->flash)
-        res[6] = modifyCell(dev->item->row(), 6, "开", QIcon(":/icon/kaiguankai.png"));
+        res[6] = modifyCell(dev->item->row(), 6, "开", icon_open);
     else
-        res[6] = modifyCell(dev->item->row(), 6, "关", QIcon(":/icon/kaiguanguan.png"));
+        res[6] = modifyCell(dev->item->row(), 6, "关", icon_close);
     if(dev->alert)
-        res[7] = modifyCell(dev->item->row(), 7, "开", QIcon(":/icon/kaiguankai.png"));
+        res[7] = modifyCell(dev->item->row(), 7, "开", icon_open);
     else
-        res[7] = modifyCell(dev->item->row(), 7, "关", QIcon(":/icon/kaiguanguan.png"));
+        res[7] = modifyCell(dev->item->row(), 7, "关", icon_close);
 
     //设置报警状态
     QString sta;
@@ -426,6 +427,82 @@ QBitArray QFormMain::refreshSignDev(TcpSignDevice *dev)
         MainWindow::showMessageBox(QMessageBox::Warning, "警告", dev->name+":"+sta, 2000);
     }
     return res;
+}
+
+//更新表格并发送数据更新下位机
+void QFormMain::refresh(TcpSignDevice* dev)
+{
+    if(dev == nullptr)
+    {
+        qDebug() << "TcpSignDevice*为空 刷新错误";
+        return ;
+    }
+
+    //刷新表格数据
+    QBitArray res = refreshGui(dev);
+    //修改相关设置 需要发送给下位机
+    for(int i = 1; i < res.size(); i++)//第0项为id 不可能修改
+    {
+        if(res[i])//该项有改动
+        {
+            //todo 发送信息给下位机 通知设置已经更改
+            //todo 这里只记录了三个check状态 其他改变未记录
+            qDebug() << QString("第")+i+"项有改动";
+
+        }
+    }
+    //有修改 同时下位机在线 则给下位机发送数据
+    //注意：这里会统计所有有修改的数量，但是该处由于 QDialogSetSignDev 的限制 能修改的只有
+    //      名字、标示语、三个开关量，而这些改变均需要通知下位机。其他如id、是否在线、报警状态，
+    //      在这里则不可能修改。所以用 res.count 是没问题的
+    if(res.count(true) != 0 && dev->offline == 0)
+    {
+        Sign *sign = Sign::findSign(dev->signid);
+        //发送信息
+
+        QByteArray data;
+
+        //发送标示语信息
+        if(res[3])//只有当警示语变更时才发送文本信息
+        {
+            data += QString("%1").arg(sign->id, 3, QLatin1Char('0')).toLocal8Bit();//提示语编号
+            data += sign->text.toLocal8Bit();//警示语内容
+            dev->sendMessage(00, 12, data);//发送警示语文本信息
+            data.clear();
+
+            if(!sign->iconfilename.isEmpty())//有图标才判断
+            {
+                //获得下位机图标列表
+                dev->sendMessage(00, 22);//获得下位机列表
+                if(dev->images.contains(sign->geticonbasename()) == false)//下位机中不包含当前图标
+                {
+                    qDebug() << "准备更新下位机图标：" << sign->iconfilename;
+                    //发送新图标
+                    dev->sendFile(sign->getIconAbsolutePath());
+                }
+            }
+        }
+
+        //发送状态
+        data += dev->stabyte;//模式，即状态字
+        data += sign->color;//颜色
+        data += dev->light;//亮度
+        data += dev->vol;//音量
+        data += dev->delay;//报警时间
+        data += QString("%1").arg(sign->id, 3, QLatin1Char('0')).toLocal8Bit();//提示语编号
+        data += sign->geticonbasename().rightJustified(3, '0').left(3).toLocal8Bit();//图片编号
+        dev->sendMessage(00, 02, data);//发送状态信息
+        data.clear();
+
+        //发送名字与安装位置
+        if(res[2])//修改名称
+        {
+            data += QString("%1").arg(dev->name, -16, QLatin1Char(0)).toLocal8Bit();//名称
+            data += QString("%1").arg("", -16, QLatin1Char(0)).toLocal8Bit();//安装位置
+            dev->sendMessage(00, 71, data);//发送警示牌名称
+            data.clear();
+        }
+    }
 }
 
 
@@ -502,19 +579,65 @@ void QFormMain::on_pushButton_AddDevice_clicked()
 //删除设备
 void QFormMain::on_pushButton_DelDevice_clicked()
 {
-    //删除行
-    QModelIndex curIndex=theSelection->currentIndex();//获取模型索引
-    if(!curIndex.isValid())
+    QModelIndexList curIndexList = theSelection->selectedRows();//获取模型索引
+    if(curIndexList.isEmpty())
     {
-        QMessageBox::information(this, "通知", "列表为空，不能再删除");
+        QMessageBox::information(this, "通知", "请选择对应的标识牌");
         return ;
     }
-    int counts = theModel->rowCount();
-    delDevice(curIndex.row());
+    for(int idx = 0; idx < curIndexList.size(); )
+    {
+        QModelIndex& index = curIndexList[idx];
+        if(index.isValid())
+        {
+            //确认是否删除
+            QString id = theModel->data(theModel->index(index.row(), 0)).toString();//获得该行的id
+            TcpSignDevice* dev = TcpSignDevice::find(id);
+            if(dev == nullptr)
+            {
+                QMessageBox::warning(this, "警告", QString("设备id[%1]异常，删除失败").arg(id));
+                continue;
+            }
+            if(QMessageBox::No == QMessageBox::question(this, "确认删除", QString("确认删除设备：%1[%2]？%3")
+                                              .arg(dev->name, dev->id, (dev->offline == 0)?QString(" 该设备仍在线[%1]").arg(dev->info):"")))
+            {
+                idx++;//不删除当前项 则跳到下一项
+                continue;
+            }
+            //开始删除
+            delDevice(index.row());
+        }
+        curIndexList = theSelection->selectedRows();//更新索引（删除操作会导致索引变化）
+    }
+
+
+//    //删除行
+//    QModelIndex curIndex=theSelection->currentIndex();//获取模型索引
+//    if(!curIndex.isValid())
+//    {
+//        QMessageBox::information(this, "通知", "列表为空，不能再删除");
+//        return ;
+//    }
+//    //确认是否删除
+//    QString id = theModel->data(theModel->index(curIndex.row(), 0)).toString();//获得该行的id
+//    TcpSignDevice* dev = TcpSignDevice::find(id);
+//    if(dev == nullptr)
+//    {
+//        QMessageBox::warning(this, "警告", "设备id异常，删除失败");
+//        return ;
+//    }
+//    if(QMessageBox::No == QMessageBox::question(this, "确认删除", QString("确认删除设备：%1[%2]？%3")
+//                                      .arg(dev->name, dev->id, (dev->offline == 0)?QString(" 该设备仍在线[%1]").arg(dev->info):"")))
+//    {
+//        return ;
+//    }
+//    //开始删除
+//    int counts = theModel->rowCount();
+//    delDevice(curIndex.row());
 
     //如果不是删除最后一行 则重新设置当前选择行
-    if(curIndex.row () != counts - 1)
-        theSelection->setCurrentIndex (curIndex, QItemSelectionModel::Select);
+//    if(curIndex.row () != counts - 1)
+//        theSelection->setCurrentIndex (curIndex, QItemSelectionModel::Select);
 }
 
 //保存设备列表
@@ -579,87 +702,155 @@ void QFormMain::on_tableView_doubleClicked(const QModelIndex &index)
 {
     //获得该行对应的对象
     QString id = theModel->data(theModel->index(index.row(), 0)).toString();//获得该行的id
-//    SignDevice* signdev = SignDevice::findSignDev(id);
-
     TcpSignDevice* dev = TcpSignDevice::find(id);
     if(dev == nullptr)
         return ;
 
     //弹窗
-    QDialogSetSignDev *dlgSignDev = new QDialogSetSignDev(this);
-//    dlgSignDev->setParameters(signdev);//预先设置
+    QDialogSetSignDev *dlgSignDev = new QDialogSetSignDev(this, QDialogSetSignDev::DEFAULT_MODE);
     dlgSignDev->setParameters(dev);//预先设置
     int ret = dlgSignDev->exec();// 以模态方式显示对话框
     if (ret == QDialog::Accepted)//OK按钮被按下
     {
-        //刷新表格数据
-        QBitArray res = refreshSignDev(dev);
-        //修改相关设置 需要发送给下位机
-        for(int i = 1; i < res.size(); i++)//第0项为id 不可能修改
-        {
-            if(res[i])//该项有改动
-            {
-                //todo 发送信息给下位机 通知设置已经更改
-                //todo 这里只记录了三个check状态 其他改变未记录
-                qDebug() << QString("第")+i+"项有改动";
-
-            }
-        }
-        //有修改 同时下位机在线 则给下位机发送数据
-        //注意：这里会统计所有有修改的数量，但是该处由于 QDialogSetSignDev 的限制 能修改的只有
-        //      名字、标示语、三个开关量，而这些改变均需要通知下位机。其他如id、是否在线、报警状态，
-        //      在这里则不可能修改。所以用 res.count 是没问题的
-        if(res.count(true) != 0 && dev->offline == 0)
-        {
-            Sign *sign = Sign::findSign(dev->signid);
-            //发送信息
-
-            QByteArray data;
-
-            //发送标示语信息
-            if(res[3])//只有当警示语变更时才发送文本信息
-            {
-                data += QString("%1").arg(sign->id, 3, QLatin1Char('0')).toLocal8Bit();//提示语编号
-                data += sign->text.toLocal8Bit();//警示语内容
-                dev->sendMessage(00, 12, data);//发送警示语文本信息
-                data.clear();
-
-                if(!sign->iconfilename.isEmpty())//有图标才判断
-                {
-                    //获得下位机图标列表
-                    dev->sendMessage(00, 22);//获得下位机列表
-                    if(dev->images.contains(sign->geticonbasename()) == false)//下位机中不包含当前图标
-                    {
-                        qDebug() << "准备更新下位机图标：" << sign->iconfilename;
-                        //发送新图标
-                        dev->sendFile(sign->getIconAbsolutePath());
-                    }
-                }
-            }
-
-            //发送状态
-            data += dev->stabyte;//模式，即状态字
-            data += sign->color;//颜色
-            data += dev->light;//亮度
-            data += dev->vol;//音量
-            data += dev->delay;//报警时间
-            data += QString("%1").arg(sign->id, 3, QLatin1Char('0')).toLocal8Bit();//提示语编号
-            data += sign->geticonbasename().rightJustified(3, '0').left(3).toLocal8Bit();//图片编号
-            dev->sendMessage(00, 02, data);//发送状态信息
-            data.clear();
-
-            //发送名字与安装位置
-            if(res[2])//修改名称
-            {
-                data += QString("%1").arg(dev->name, -16, QLatin1Char(0)).toLocal8Bit();//名称
-                data += QString("%1").arg("", -16, QLatin1Char(0)).toLocal8Bit();//安装位置
-                dev->sendMessage(00, 71, data);//发送警示牌名称
-                data.clear();
-            }
-
-
-        }
+        refresh(dev);
     }
     delete dlgSignDev;
+}
+
+
+
+//========================批量设置===================================
+
+
+void QFormMain::batchSet(int mode)
+{
+    //获得光标
+    QModelIndexList curIndexList = theSelection->selectedRows();//获取模型索引
+    if(curIndexList.isEmpty())
+    {
+        QMessageBox::information(this, "通知", "请选择对应的标识牌");
+        return ;
+    }
+//    qDebug() << curIndexList;
+
+
+
+    //获得该行对应的对象
+    QString id = theModel->data(theModel->index(curIndexList[0].row(), 0)).toString();//获得索引第一行的id
+    TcpSignDevice* templateDev = TcpSignDevice::find(id);//用该列对应的设备作为模板
+    if(templateDev == nullptr)
+    {
+        QMessageBox::warning(this, "警告", QString("模板设备id[%1]异常，更新失败").arg(id));
+        return ;
+    }
+    //弹窗
+    QDialogSetSignDev *dlgSignDev = new QDialogSetSignDev(this, static_cast<QDialogSetSignDev::mode>(mode));//批量设置模式
+    dlgSignDev->setParameters(templateDev);//预先设置
+    dlgSignDev->setWindowTitle("批量设置");
+    int ret = dlgSignDev->exec();// 以模态方式显示对话框
+    if (ret == QDialog::Accepted)//OK按钮被按下
+    {
+        //更新每个设备的状态
+        for(int idx = 0; idx < curIndexList.size(); idx++)
+        {
+
+            QModelIndex& index = curIndexList[idx];
+            if(index.isValid())
+            {
+                //确认是否删除
+                id = theModel->data(theModel->index(index.row(), 0)).toString();//获得该行的id
+                TcpSignDevice* dev = TcpSignDevice::find(id);//重新查找每行对应的设备
+                if(dev == nullptr)
+                {
+                    QMessageBox::warning(this, "警告", QString("设备id[%1]异常，更新失败").arg(id));
+                    continue;
+                }
+                MainWindow::showStatusText(QString("正在更新第%1/%2个设备(%3[%4])，更新中请勿进行其他操作")
+                                           .arg(idx+1)
+                                           .arg(curIndexList.size())
+                                           .arg(dev->name, dev->id), 0);//在主界面的状态栏显示信息 永久显示
+                //只有在线才更新状态
+                if(dev->offline == 0)
+                {
+                    //将模板的一些参数赋值到当前行
+                    if(idx != 0)//第一行是模板 无需修改
+                    {
+                        switch(mode)
+                        {
+                            case(QDialogSetSignDev::BATCH_MODE):
+                            {
+                                dev->groupname = templateDev->groupname;
+                                dev->signid = templateDev->signid;
+                                dev->alert = templateDev->alert;
+                                dev->flash = templateDev->flash;
+                                dev->voice = templateDev->voice;
+                                break;
+                            }
+                            case(QDialogSetSignDev::SIGN_MODE):
+                            {
+                                dev->signid = templateDev->signid;
+                                break;
+                            }
+                            case(QDialogSetSignDev::GROUP_MODE):
+                            {
+                                dev->groupname = templateDev->groupname;
+                                break;
+                            }
+                            case(QDialogSetSignDev::VOICE_MODE):
+                            {
+                                dev->voice = templateDev->voice;
+                                break;
+                            }
+                            case(QDialogSetSignDev::FLASH_MODE):
+                            {
+                                dev->flash = templateDev->flash;
+                                break;
+                            }
+                            case(QDialogSetSignDev::ALERT_MODE):
+                            {
+                                dev->alert = templateDev->alert;
+                                break;
+                            }
+                        }
+                    }
+                    refresh(dev);
+                }
+            }
+        }
+    }
+    MainWindow::showStatusText("批量设置成功");//在主界面的状态栏显示信息 永久显示
+    delete dlgSignDev;
+}
+
+
+
+//语音设置
+void QFormMain::on_pushButton_VoiceSet_clicked()
+{
+    batchSet(QDialogSetSignDev::VOICE_MODE);
+}
+
+//闪光设置
+void QFormMain::on_pushButton_FlashSet_clicked()
+{
+    batchSet(QDialogSetSignDev::FLASH_MODE);
+}
+
+//警示设置
+void QFormMain::on_pushButton_AlarmSet_clicked()
+{
+    batchSet(QDialogSetSignDev::ALERT_MODE);
+}
+
+//更换标示语设置
+void QFormMain::on_pushButton_ChangeAlarm_clicked()
+{
+    batchSet(QDialogSetSignDev::SIGN_MODE);
+}
+
+//批量全部设置
+void QFormMain::on_pushButton_BatchSet_clicked()
+{
+    batchSet(QDialogSetSignDev::BATCH_MODE);
 }
 

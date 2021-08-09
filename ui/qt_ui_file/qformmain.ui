@@ -114,6 +114,13 @@
        </spacer>
       </item>
       <item>
+       <widget class="QPushButton" name="pushButton_BatchSet">
+        <property name="text">
+         <string>批量设置</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QPushButton" name="pushButton_VoiceSet">
         <property name="text">
          <string>语音设置</string>

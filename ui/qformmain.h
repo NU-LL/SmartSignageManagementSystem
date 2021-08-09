@@ -23,12 +23,19 @@ private:
     QStandardItemModel * theModel; //数据模型
     QItemSelectionModel *theSelection; //选择模型
 
+    //图标设置
+    const QIcon icon_open = QIcon(":/icon/kaiguankai.png");
+    const QIcon icon_close = QIcon(":/icon/kaiguanguan.png");
+    const QIcon icon_online = QIcon(":/icon/zaixian_1.png");
+    const QIcon icon_offline = QIcon(":/icon/lixian_1.png");
+
+
     //事件截获
     bool eventFilter(QObject *watched, QEvent *event);
     //关闭窗口信号
     void closeEvent(QCloseEvent *event);
     //修改某一项
-    bool modifyCell(int row, int column, const QString &text, const QIcon &icon = QIcon(), const QBrush &brush = QBrush(Qt::white)){
+    bool modifyCell(int row, int column, const QString &text, const QIcon &icon = QIcon(), const QBrush &brush = QBrush()){
         QStandardItem* aItem = theModel->item(row, column);
         if(aItem == nullptr)
         {
@@ -40,12 +47,20 @@ private:
         {
             aItem->setText(text);
             res = true;
+
+            if(!icon.isNull())//只有在文本改变的前提下才有可能改变图标
+            {
+                aItem->setIcon(icon);
+                res = true;
+            }
         }
-        if(!icon.isNull())
-        {
-            aItem->setIcon(icon);
-            res = true;
-        }
+
+//        if(aItem->icon().cacheKey() != icon.cacheKey())
+//        {
+//            aItem->icon().swap(const_cast<QIcon &>(icon));
+////            aItem->setIcon(icon);
+//            res = true;
+//        }
 //        if(aItem->foreground() != brush)
         if(theModel->data(aItem->index(), Qt::BackgroundColorRole).value<QBrush>() != brush)
         {
@@ -69,7 +84,21 @@ public:
 
     //更新 SignDevice 中的数据到表格中
     //返回值：哪一位置1则表示该列更新
-    QBitArray refreshSignDev(TcpSignDevice *dev);
+    QBitArray refreshGui(TcpSignDevice *dev);
+    //更新表格并发送数据更新下位机
+    void refresh(TcpSignDevice* dev);
+
+    //批量设置
+//    enum mode{
+//        DEFAULT_MODE,
+//        BATCH_MODE,
+//        VOICE_MODE,
+//        FLASH_MODE,
+//        ALERT_MODE,
+//        SIGN_MODE,
+//        GROUP_MODE,
+//    };
+    void batchSet(int mode = 1);//批量设置（全部设置）
 
 
     void addDevice(TcpSignDevice* dev)
@@ -114,6 +143,16 @@ private slots:
     void on_tableView_clicked(const QModelIndex &index);
 
     void on_tableView_doubleClicked(const QModelIndex &index);
+
+    void on_pushButton_VoiceSet_clicked();
+
+    void on_pushButton_FlashSet_clicked();
+
+    void on_pushButton_AlarmSet_clicked();
+
+    void on_pushButton_ChangeAlarm_clicked();
+
+    void on_pushButton_BatchSet_clicked();
 
 private:
     Ui::QFormMain *ui;

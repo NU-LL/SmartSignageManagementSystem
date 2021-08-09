@@ -19,10 +19,29 @@ private:
     TcpSignDevice* dev = nullptr;
 
 public:
-    explicit QDialogSetSignDev(QWidget *parent = nullptr);
+    enum mode{
+        DEFAULT_MODE,
+        BATCH_MODE,
+        VOICE_MODE,
+        FLASH_MODE,
+        ALERT_MODE,
+        SIGN_MODE,
+        GROUP_MODE,
+    };
+
+
+
+    explicit QDialogSetSignDev(QWidget *parent = nullptr, mode batchMode = DEFAULT_MODE);
     ~QDialogSetSignDev();
 
     void setParameters(TcpSignDevice* signdev);
+
+
+
+
+    mode batchMode = DEFAULT_MODE;//批量修改模式
+
+
 
 private slots:
     void on_buttonBox_accepted();
