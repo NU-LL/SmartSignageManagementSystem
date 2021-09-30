@@ -56,10 +56,18 @@ void TcpSignDevice::serialization(QJsonObject &json) const
     json["groupname"] = this->groupname;
     json["name"] = this->name;
     json["signid"] = this->signid;
-    json["offline"] = this->offline;
-    json["voice"] = this->voice;
-    json["flash"] = this->flash;
-    json["alert"] = this->alert;
+    json["warnid"] = this->warnid;
+    json["imageidx"] = this->imageidx;
+
+    QJsonArray images;
+    images.fromStringList(this->images);
+    json["images"] = images;
+
+    json["light"] = this->light;
+    json["vol"] = this->vol;
+    json["delay"] = this->delay;
+    json["color"] = this->color;
+    json["stabyte"] = this->stabyte;
 }
 
 void TcpSignDevice::deserialization(const QString &str)
@@ -83,10 +91,19 @@ void TcpSignDevice::deserialization(const QJsonObject &json)
     this->groupname = json["groupname"].toString();
     this->name = json["name"].toString();
     this->signid = json["signid"].toString();
+    this->warnid = json["warnid"].toString();
+    this->imageidx = json["imageidx"].toString();
+
+    QJsonArray images = json["images"].toArray();
+    for(const QJsonValue& image : qAsConst(images))
+        this->images.append(image.toString());
+
+    this->light = json["light"].toInt();
+    this->vol = json["vol"].toInt();
+    this->delay = json["delay"].toInt();
+    this->color = json["color"].toInt();
+    this->stabyte = json["stabyte"].toInt();
     this->offline = 1;//默认均为离线
-    this->voice = json["voice"].toInt();
-    this->flash = json["flash"].toInt();
-    this->alert = json["alert"].toInt();
 }
 
 void TcpSignDevice::Init()
@@ -315,6 +332,7 @@ void TcpSignDevice::cmd_01_callback(void *dev, quint8 addr, quint8 type, const Q
     //设置状态
     device->stabyte = staBit;
     device->signid = signNum;
+    device->warnid = signNum;//警示语id直接用的标示语的
     device->imageidx = imageNum;
     device->light = light;
     device->vol = vol;

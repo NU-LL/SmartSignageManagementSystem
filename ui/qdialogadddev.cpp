@@ -165,7 +165,7 @@ QDialogAddDev::QDialogAddDev(QWidget *parent) :
     }else
         ui->label_DeviceId->setText("请连接设备获取id");
 
-    //设置警示语列表
+    //设置标示语列表
     QStandardItemModel *pItemModel = qobject_cast<QStandardItemModel*>(ui->comboBox_Sign->model());
     int i = 0;
     foreach(Sign* sign, Sign::getSignTable())
@@ -173,11 +173,32 @@ QDialogAddDev::QDialogAddDev(QWidget *parent) :
         ui->comboBox_Sign->addItem(sign->getIcon(), sign->text, QVariant::fromValue(sign));//添加图标 文字 自定义对象
         pItemModel->item(i++)->setForeground(sign->getColor());//修改某项文本颜色
     }
-    //设置警示语列表切换时颜色也跟着改变
+    //设置标示语列表切换时颜色也跟着改变
     Sign* sign = ui->comboBox_Sign->currentData().value<Sign*>();
     if(sign != nullptr)
         ui->comboBox_Sign->setStyleSheet(QString("QComboBox{color:%1;}").arg(sign->getStrColor()));
     connect(ui->comboBox_Sign, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int index){
+        //先获取信号的发送者
+        QComboBox *cmb = qobject_cast<QComboBox *>(sender());
+        Sign* sign = cmb->itemData(index).value<Sign*>();
+        if(sign != nullptr)
+            cmb->setStyleSheet(QString("QComboBox{color:%1;}").arg(sign->getStrColor()));
+    });
+
+
+    //设置警示语列表
+    pItemModel = qobject_cast<QStandardItemModel*>(ui->comboBox_WarnSign->model());
+    i = 0;
+    foreach(Sign* sign, Sign::getSignTable())
+    {
+        ui->comboBox_WarnSign->addItem(sign->getIcon(), sign->text, QVariant::fromValue(sign));//添加图标 文字 自定义对象
+        pItemModel->item(i++)->setForeground(sign->getColor());//修改某项文本颜色
+    }
+    //设置警示语列表切换时颜色也跟着改变
+    Sign* warn_sign = ui->comboBox_WarnSign->currentData().value<Sign*>();
+    if(warn_sign != nullptr)
+        ui->comboBox_WarnSign->setStyleSheet(QString("QComboBox{color:%1;}").arg(warn_sign->getStrColor()));
+    connect(ui->comboBox_WarnSign, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int index){
         //先获取信号的发送者
         QComboBox *cmb = qobject_cast<QComboBox *>(sender());
         Sign* sign = cmb->itemData(index).value<Sign*>();
@@ -223,6 +244,17 @@ const QString QDialogAddDev::getSignIdx()
 {
     Sign* sign = ui->comboBox_Sign->currentData().value<Sign*>();
     return sign->id;
+}
+
+const QString QDialogAddDev::getWarnSignText()
+{
+    return ui->comboBox_WarnSign->currentText();
+}
+
+const QString QDialogAddDev::getWarnSignIdx()
+{
+    Sign* warn_sign = ui->comboBox_WarnSign->currentData().value<Sign*>();
+    return warn_sign->id;
 }
 
 const QString QDialogAddDev::getGroupName()

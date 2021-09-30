@@ -15,6 +15,9 @@ public:
     explicit QDlgAbout(QWidget *parent = nullptr);
     ~QDlgAbout();
 
+private slots:
+    void on_pushButton_Details_clicked();
+
 private:
     Ui::QDlgAbout *ui;
 };

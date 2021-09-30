@@ -138,6 +138,7 @@ public://设备属性
     QString location;//安装位置
 //    QString sign;//标示语
     QString signid;//标示语编号
+    QString warnid;//警示语编号
     QString imageidx;//图片编号
     QList<QString> images;//目前所拥有的图片
     quint8 light;//显示亮度

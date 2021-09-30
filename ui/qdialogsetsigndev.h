@@ -26,6 +26,7 @@ public:
         FLASH_MODE,
         ALERT_MODE,
         SIGN_MODE,
+        WARNSIGN_MODE,
         GROUP_MODE,
     };
 

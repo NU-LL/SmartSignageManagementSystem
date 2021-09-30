@@ -174,7 +174,6 @@ void MainWindow::on_actionAbout_triggered()
 {
     QDlgAbout *dlgAbout = new QDlgAbout(this);
     dlgAbout->exec();
-    QMessageBox::aboutQt(this, tr("关于"));
 }
 
 //选项

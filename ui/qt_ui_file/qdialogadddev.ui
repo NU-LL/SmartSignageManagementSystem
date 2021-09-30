@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>248</width>
-    <height>190</height>
+    <height>218</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,10 +16,10 @@
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <layout class="QGridLayout" name="gridLayout">
-     <item row="0" column="0">
-      <widget class="QLabel" name="label_2">
+     <item row="2" column="0">
+      <widget class="QLabel" name="label_3">
        <property name="text">
-        <string>设备</string>
+        <string>名称</string>
        </property>
       </widget>
      </item>
@@ -40,6 +40,16 @@
        </item>
       </layout>
      </item>
+     <item row="1" column="1">
+      <widget class="QLineEdit" name="lineEdit_DeviceId"/>
+     </item>
+     <item row="4" column="0">
+      <widget class="QLabel" name="label">
+       <property name="text">
+        <string>标示语</string>
+       </property>
+      </widget>
+     </item>
      <item row="1" column="0">
       <widget class="QLabel" name="label_4">
        <property name="minimumSize">
@@ -53,23 +63,30 @@
        </property>
       </widget>
      </item>
-     <item row="1" column="1">
-      <widget class="QLineEdit" name="lineEdit_DeviceId"/>
-     </item>
-     <item row="2" column="0">
-      <widget class="QLabel" name="label_3">
-       <property name="text">
-        <string>名称</string>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="1">
-      <widget class="QLineEdit" name="lineEdit_Name"/>
-     </item>
      <item row="3" column="0">
       <widget class="QLabel" name="label_5">
        <property name="text">
         <string>组名</string>
+       </property>
+      </widget>
+     </item>
+     <item row="6" column="1">
+      <widget class="QDialogButtonBox" name="buttonBox">
+       <property name="standardButtons">
+        <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="1">
+      <widget class="QComboBox" name="comboBox_Sign"/>
+     </item>
+     <item row="2" column="1">
+      <widget class="QLineEdit" name="lineEdit_Name"/>
+     </item>
+     <item row="0" column="0">
+      <widget class="QLabel" name="label_2">
+       <property name="text">
+        <string>设备</string>
        </property>
       </widget>
      </item>
@@ -106,22 +123,15 @@
        </item>
       </layout>
      </item>
-     <item row="4" column="0">
-      <widget class="QLabel" name="label">
+     <item row="5" column="0">
+      <widget class="QLabel" name="label_6">
        <property name="text">
-        <string>标示语</string>
+        <string>警示语</string>
        </property>
       </widget>
-     </item>
-     <item row="4" column="1">
-      <widget class="QComboBox" name="comboBox_Sign"/>
      </item>
      <item row="5" column="1">
-      <widget class="QDialogButtonBox" name="buttonBox">
-       <property name="standardButtons">
-        <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
-       </property>
-      </widget>
+      <widget class="QComboBox" name="comboBox_WarnSign"/>
      </item>
     </layout>
    </item>

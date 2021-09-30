@@ -7,13 +7,13 @@
     <x>0</x>
     <y>0</y>
     <width>203</width>
-    <height>221</height>
+    <height>322</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>设置警示牌</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout">
+  <layout class="QVBoxLayout" name="verticalLayout_2">
    <item>
     <layout class="QGridLayout" name="gridLayout">
      <item row="0" column="0">
@@ -66,11 +66,41 @@
      <item row="3" column="1">
       <widget class="QComboBox" name="comboBox_Sign"/>
      </item>
-     <item row="4" column="0" colspan="2">
-      <widget class="QGroupBox" name="groupBox">
-       <property name="title">
-        <string>控制</string>
-       </property>
+    </layout>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupBox">
+     <property name="title">
+      <string>警示</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout">
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_2">
+        <item>
+         <widget class="QLabel" name="label_5">
+          <property name="minimumSize">
+           <size>
+            <width>40</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>40</width>
+            <height>16777215</height>
+           </size>
+          </property>
+          <property name="text">
+           <string>警示语</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="comboBox_Warning"/>
+        </item>
+       </layout>
+      </item>
+      <item>
        <layout class="QHBoxLayout" name="horizontalLayout">
         <item>
          <widget class="QCheckBox" name="checkBox_Voice">
@@ -94,9 +124,123 @@
          </widget>
         </item>
        </layout>
-      </widget>
-     </item>
-    </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_3">
+        <item>
+         <widget class="QLabel" name="label_6">
+          <property name="text">
+           <string>音量</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QSlider" name="horizontalSlider_Vol">
+          <property name="maximum">
+           <number>7</number>
+          </property>
+          <property name="pageStep">
+           <number>2</number>
+          </property>
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="label_Vol">
+          <property name="minimumSize">
+           <size>
+            <width>20</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="text">
+           <string>0</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_4">
+        <item>
+         <widget class="QLabel" name="label_8">
+          <property name="text">
+           <string>亮度</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QSlider" name="horizontalSlider_Light">
+          <property name="maximum">
+           <number>255</number>
+          </property>
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="label_Light">
+          <property name="minimumSize">
+           <size>
+            <width>20</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="text">
+           <string>0</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_5">
+        <item>
+         <widget class="QLabel" name="label_10">
+          <property name="text">
+           <string>时间</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QSlider" name="horizontalSlider_Time">
+          <property name="maximum">
+           <number>255</number>
+          </property>
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="label_Time">
+          <property name="minimumSize">
+           <size>
+            <width>20</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="text">
+           <string>0</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
    </item>
    <item>
     <spacer name="verticalSpacer">
@@ -106,7 +250,7 @@
      <property name="sizeHint" stdset="0">
       <size>
        <width>20</width>
-       <height>14</height>
+       <height>0</height>
       </size>
      </property>
     </spacer>
@@ -132,8 +276,8 @@
    <slot>accept()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>227</x>
-     <y>184</y>
+     <x>174</x>
+     <y>384</y>
     </hint>
     <hint type="destinationlabel">
      <x>157</x>
@@ -148,12 +292,60 @@
    <slot>reject()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>295</x>
-     <y>189</y>
+     <x>174</x>
+     <y>384</y>
     </hint>
     <hint type="destinationlabel">
      <x>286</x>
      <y>198</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>horizontalSlider_Vol</sender>
+   <signal>valueChanged(int)</signal>
+   <receiver>label_Vol</receiver>
+   <slot>setNum(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>83</x>
+     <y>241</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>191</x>
+     <y>241</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>horizontalSlider_Light</sender>
+   <signal>valueChanged(int)</signal>
+   <receiver>label_Light</receiver>
+   <slot>setNum(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>94</x>
+     <y>270</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>192</x>
+     <y>266</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>horizontalSlider_Time</sender>
+   <signal>valueChanged(int)</signal>
+   <receiver>label_Time</receiver>
+   <slot>setNum(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>102</x>
+     <y>289</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>188</x>
+     <y>291</y>
     </hint>
    </hints>
   </connection>

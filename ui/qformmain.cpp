@@ -56,7 +56,7 @@ QFormMain::QFormMain(QWidget *parent) :
 
     //加载表格
 //    theModel->setHorizontalHeaderLabels({"id", "组名", "名称", "标示语", "网络状态", "语音设置", "闪光灯设置", "警示设置", "设备控制"}); //设置表头文字
-    theModel->setHorizontalHeaderLabels({"id", "组名", "名称", "标示语", "网络状态", "语音状态", "闪光灯状态", "警示状态", "异常与故障状态"}); //设置表头文字
+    theModel->setHorizontalHeaderLabels({"id", "组名", "名称", "标示语", "警示语", "网络状态", "语音状态", "闪光灯状态", "警示状态", "异常与故障状态"}); //设置表头文字
     foreach(TcpSignDevice* dev, TcpSignDevice::DeviceTable)
         dev->item = addLine(dev);
 
@@ -193,6 +193,12 @@ QStandardItem *QFormMain::addLine(const TcpSignDevice *dev)
         QMessageBox::warning(this, tr("警告"), QString("未找到该标示语id：")+dev->signid+", 插入设备错误");
         return nullptr;
     }
+    Sign* warn_sign = Sign::findSign(dev->warnid);
+    if(warn_sign == nullptr)
+    {
+        QMessageBox::warning(this, tr("警告"), QString("未找到该警示语id：")+dev->warnid+", 插入设备错误");
+        return nullptr;
+    }
     //在表格最后添加行
     QList<QStandardItem*> aItemList; //容器类
     QStandardItem *aItem;
@@ -221,6 +227,14 @@ QStandardItem *QFormMain::addLine(const TcpSignDevice *dev)
     aItem->setForeground(sign->getQtColor());//设置字体颜色
     aItem->setIcon(sign->getIcon());//设置图标
     aItem->setData(QVariant::fromValue((Sign *)sign));//存放标示语的指针
+    aItemList << aItem;
+    //警示语
+    aItem=new QStandardItem(warn_sign->text);
+    aItem->setTextAlignment(Qt::AlignCenter);
+    aItem->setEditable(false);//禁止编辑
+    aItem->setForeground(warn_sign->getQtColor());//设置字体颜色
+    aItem->setIcon(warn_sign->getIcon());//设置图标
+    aItem->setData(QVariant::fromValue((Sign *)warn_sign));//存放标示语的指针
     aItemList << aItem;
     //网络状态（默认均离线）
     aItem=new QStandardItem();
@@ -338,10 +352,17 @@ QStandardItem *QFormMain::addLine(const TcpSignDevice *dev)
 QBitArray QFormMain::refreshGui(TcpSignDevice *dev)
 {
     QBitArray res(16, 0);
+    qint8 colidx = 1;
     Sign *sign = Sign::findSign(dev->signid);
     if(sign == nullptr)
     {
         MainWindow::showMessageBox(QMessageBox::Critical, "错误", "找不到对应的标示语id："+dev->signid+" 刷新数据无效");
+        return res;
+    }
+    Sign *warn_sign = Sign::findSign(dev->warnid);
+    if(warn_sign == nullptr)
+    {
+        MainWindow::showMessageBox(QMessageBox::Critical, "错误", "找不到对应的警示语id："+dev->warnid+" 刷新数据无效");
         return res;
     }
     if(dev->item == nullptr)
@@ -351,38 +372,63 @@ QBitArray QFormMain::refreshGui(TcpSignDevice *dev)
     }
 
 
-    res[1] = modifyCell(dev->item->row(), 1, dev->groupname);
-    res[2] = modifyCell(dev->item->row(), 2, dev->name);
-    //设置警示语
-    QStandardItem* signItem = theModel->item(dev->item->row(), 3);//警示语栏
+    res[colidx] = modifyCell(dev->item->row(), colidx, dev->groupname);
+    colidx++;
+    res[colidx] = modifyCell(dev->item->row(), colidx, dev->name);
+    colidx++;
+    //设置标示语
+    QStandardItem* signItem = theModel->item(dev->item->row(), colidx);//标示语栏
     Sign * lastsign = signItem->data().value<Sign*>();//取出上次的指针
     if(lastsign != sign)
     {
         //更新标示语
-        res[3] = true;
+        res[colidx] = true;
         signItem->setForeground(sign->getColor());//设置字体颜色
         signItem->setIcon(sign->getIcon());//设置图标
         signItem->setText(sign->text);
         //修改自定义数据 放入最新指针
         signItem->setData(QVariant::fromValue((Sign *)sign));//存放标示语的指针
     }
+    colidx++;
+    //设置警示语
+    QStandardItem* warnsignItem = theModel->item(dev->item->row(), colidx);//警示语栏
+    Sign * warnlastsign = warnsignItem->data().value<Sign*>();//取出上次的指针
+    if(warnlastsign != warn_sign)
+    {
+        //更新警示语
+        res[colidx] = true;
+        warnsignItem->setForeground(warn_sign->getColor());//设置字体颜色
+        warnsignItem->setIcon(warn_sign->getIcon());//设置图标
+        warnsignItem->setText(warn_sign->text);
+        //修改自定义数据 放入最新指针
+        warnsignItem->setData(QVariant::fromValue((Sign *)warn_sign));//存放标示语的指针
+    }
+    colidx++;
 
     if(dev->offline)
-        res[4] = modifyCell(dev->item->row(), 4, "离线", icon_offline);
+        res[colidx] = modifyCell(dev->item->row(), colidx, "离线", icon_offline);
     else
-        res[4] = modifyCell(dev->item->row(), 4, "在线", icon_online);
+        res[colidx] = modifyCell(dev->item->row(), colidx, "在线", icon_online);
+    colidx++;
+
     if(dev->voice)
-        res[5] = modifyCell(dev->item->row(), 5, "开", icon_open);
+        res[colidx] = modifyCell(dev->item->row(), colidx, "开", icon_open);
     else
-        res[5] = modifyCell(dev->item->row(), 5, "关", icon_close);
+        res[colidx] = modifyCell(dev->item->row(), colidx, "关", icon_close);
+    colidx++;
+
     if(dev->flash)
-        res[6] = modifyCell(dev->item->row(), 6, "开", icon_open);
+        res[colidx] = modifyCell(dev->item->row(), colidx, "开", icon_open);
     else
-        res[6] = modifyCell(dev->item->row(), 6, "关", icon_close);
+        res[colidx] = modifyCell(dev->item->row(), colidx, "关", icon_close);
+    colidx++;
+
     if(dev->alert)
-        res[7] = modifyCell(dev->item->row(), 7, "开", icon_open);
+        res[colidx] = modifyCell(dev->item->row(), colidx, "开", icon_open);
     else
-        res[7] = modifyCell(dev->item->row(), 7, "关", icon_close);
+        res[colidx] = modifyCell(dev->item->row(), colidx, "关", icon_close);
+    colidx++;
+
 
     //设置报警状态
     QString sta;
@@ -421,8 +467,8 @@ QBitArray QFormMain::refreshGui(TcpSignDevice *dev)
         }
     }else
         sta = "无异常";
-    res[8] = modifyCell(dev->item->row(), 8, sta, QIcon(), brush);
-    if(res[8] && dev->stafault)//如果修改了 且 有异常 则需要提醒
+    res[colidx] = modifyCell(dev->item->row(), colidx, sta, QIcon(), brush);
+    if(res[colidx] && dev->stafault)//如果修改了 且 有异常 则需要提醒
     {
         MainWindow::showMessageBox(QMessageBox::Warning, "警告", dev->name+":"+sta, 2000);
     }
@@ -458,41 +504,57 @@ void QFormMain::refresh(TcpSignDevice* dev)
     if(res.count(true) != 0 && dev->offline == 0)
     {
         Sign *sign = Sign::findSign(dev->signid);
+        Sign *warn_sign = Sign::findSign(dev->warnid);
         //发送信息
 
         QByteArray data;
 
         //发送标示语信息
-        if(res[3])//只有当警示语变更时才发送文本信息
+        if(res[3])//只有当标示语变更时才发送文本信息
         {
             data += QString("%1").arg(sign->id, 3, QLatin1Char('0')).toLocal8Bit();//提示语编号
-            data += sign->text.toLocal8Bit();//警示语内容
-            dev->sendMessage(00, 12, data);//发送警示语文本信息
+            data += sign->text.toLocal8Bit();//标示语内容
+            dev->sendMessage(00, 12, data);//发送标示语文本信息
             data.clear();
 
             if(!sign->iconfilename.isEmpty())//有图标才判断
             {
                 //获得下位机图标列表
                 dev->sendMessage(00, 22);//获得下位机列表
-                if(dev->images.contains(sign->geticonbasename()) == false)//下位机中不包含当前图标
+                if(dev->images.contains(sign->geticonbasename()) == false)//存在图标 且 下位机中不包含当前图标
                 {
-                    qDebug() << "准备更新下位机图标：" << sign->iconfilename;
+                    qDebug() << "准备更新下位机警示语图标：" << sign->iconfilename;
                     //发送新图标
                     dev->sendFile(sign->getIconAbsolutePath());
                 }
             }
         }
 
-        //发送状态
-        data += dev->stabyte;//模式，即状态字
-        data += sign->color;//颜色
+        //发送警示语信息（由于亮度、音量、报警时间没有确定是否修改 所以 02 指令一直发送）
+        data += dev->stabyte & 0x07 + '0';//模式，即状态字 无需考虑是否离线
+        data += warn_sign->color;//颜色
         data += dev->light;//亮度
         data += dev->vol;//音量
         data += dev->delay;//报警时间
-        data += QString("%1").arg(sign->id, 3, QLatin1Char('0')).toLocal8Bit();//提示语编号
-        data += sign->geticonbasename().rightJustified(3, '0').left(3).toLocal8Bit();//图片编号
-        dev->sendMessage(00, 02, data);//发送状态信息
+        data += QString("%1").arg(warn_sign->id, 4, QLatin1Char('0')).toLocal8Bit();//提示语编号
+        data += warn_sign->geticonbasename().rightJustified(3, '0').left(3).toLocal8Bit();//图片编号
+        dev->sendMessage(00, 02, data);//发送警示语信息
         data.clear();
+
+        if(res[4])//只有当警示语变更时才尝试判断是否需要发送图片
+        {
+            if(!warn_sign->iconfilename.isEmpty())//有图标才判断
+            {
+                //获得下位机图标列表
+                dev->sendMessage(00, 22);//获得下位机列表
+                if(dev->images.contains(warn_sign->geticonbasename()) == false)//存在图标 且 下位机中不包含当前图标
+                {
+                    qDebug() << "准备更新下位机标示语图标：" << warn_sign->iconfilename;
+                    //发送新图标
+                    dev->sendFile(warn_sign->getIconAbsolutePath());
+                }
+            }
+        }
 
         //发送名字与安装位置
         if(res[2])//修改名称
@@ -534,7 +596,7 @@ bool QFormMain::eventFilter(QObject *watched, QEvent *event)
                     }
                 }
                 if(!sta)
-                    QMessageBox::information(this, "通知", "没有找到警示牌："+searchname);
+                    QMessageBox::information(this, "通知", "没有找到标示牌："+searchname);
             }
         }
     }
@@ -569,6 +631,7 @@ void QFormMain::on_pushButton_AddDevice_clicked()
         TcpSignDevice* dev = new TcpSignDevice(nullptr, dlgAddDev->getDeviceId(), dlgAddDev->getName(), (quint8)0x08);//离线
         dev->groupname = dlgAddDev->getGroupName();
         dev->signid = dlgAddDev->getSignIdx();
+        dev->warnid = dlgAddDev->getWarnSignIdx();
         //注册
         TcpSignDevice::DeviceTable[dlgAddDev->getDeviceId()] = dev;
         addDevice(dev);
@@ -781,9 +844,13 @@ void QFormMain::batchSet(int mode)
                             {
                                 dev->groupname = templateDev->groupname;
                                 dev->signid = templateDev->signid;
+                                dev->warnid = templateDev->warnid;
                                 dev->alert = templateDev->alert;
                                 dev->flash = templateDev->flash;
                                 dev->voice = templateDev->voice;
+                                dev->vol = templateDev->vol;
+                                dev->light = templateDev->light;
+                                dev->delay = templateDev->delay;
                                 break;
                             }
                             case(QDialogSetSignDev::SIGN_MODE):

@@ -72,6 +72,8 @@ public:
     const QString getDeviceId();
     const QString getSignText();
     const QString getSignIdx();
+    const QString getWarnSignText();
+    const QString getWarnSignIdx();
     const QString getGroupName();
 
 private slots:
